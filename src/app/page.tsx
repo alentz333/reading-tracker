@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
