@@ -1,26 +1,114 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --font-cinzel: "Cinzel", serif;
+  --font-cormorant: "Cormorant Garamond", serif;
+  
+  --color-cream: #FAF8F5;
+  --color-forest: #2D4739;
+  --color-forest-light: #3D5A4A;
+  --color-gold: #C9A227;
+  --color-gold-light: #D4B84A;
+  --color-charcoal: #1a1a1a;
+  --color-parchment: #F5F1E8;
+  --color-ink: #2C2C2C;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-cormorant), Georgia, serif;
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-cinzel), serif;
+}
+
+.btn-primary {
+  background-color: var(--color-forest);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-forest-light);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--color-forest);
+  border: 1px solid var(--color-forest);
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  font-family: var(--font-cinzel), serif;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-forest);
+  color: white;
+}
+
+.card {
+  background-color: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: var(--font-cormorant), serif;
+  font-size: 1.1rem;
+  transition: border-color 0.2s;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--color-forest);
+  box-shadow: 0 0 0 3px rgba(45, 71, 57, 0.1);
+}
+
+.shelf-tag {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.shelf-read {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.shelf-reading {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.shelf-want {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.star {
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.star:hover {
+  transform: scale(1.2);
 }
