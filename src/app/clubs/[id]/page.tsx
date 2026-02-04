@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/auth/AuthProvider'
 import Link from 'next/link'
@@ -19,15 +19,19 @@ interface Club {
 interface Member {
   id: string
   user_id: string
-  role: string
-  username: string
-  display_name: string | null
-  avatar_url: string | null
+  role: 'owner' | 'admin' | 'member'
+  joined_at: string
+  profile: {
+    username: string | null
+    display_name: string | null
+    avatar_url: string | null
+  }
 }
 
 interface ClubBook {
   id: string
-  status: string
+  book_id: string
+  status: 'current' | 'upcoming' | 'finished'
   start_date: string | null
   target_finish_date: string | null
   book: {
@@ -38,144 +42,272 @@ interface ClubBook {
   }
 }
 
-export default function ClubDetailPage() {
-  const params = useParams()
-  const clubId = params.id as string
+interface BookSearchResult {
+  key: string
+  title: string
+  author_name?: string[]
+  cover_i?: number
+}
+
+export default function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: clubId } = use(params)
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
-  const { user } = useAuth()
   const supabase = createClient()
 
   const [club, setClub] = useState<Club | null>(null)
   const [members, setMembers] = useState<Member[]>([])
-  const [books, setBooks] = useState<ClubBook[]>([])
+  const [clubBooks, setClubBooks] = useState<ClubBook[]>([])
   const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
-  const [membership, setMembership] = useState<{ role: string } | null>(null)
-  const [showInviteCode, setShowInviteCode] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [showJoinCode, setShowJoinCode] = useState(false)
+  
+  // Add book modal state
+  const [showAddBook, setShowAddBook] = useState(false)
+  const [bookSearch, setBookSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<BookSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [addingBook, setAddingBook] = useState(false)
 
   useEffect(() => {
-    loadClub()
-  }, [clubId, user])
+    if (authLoading) return
+    loadClubData()
+  }, [authLoading, clubId, user])
 
-  async function loadClub() {
+  async function loadClubData() {
     setLoading(true)
+    setError(null)
 
-    // Fetch club
-    const { data: clubData, error } = await supabase
+    // Load club info
+    const { data: clubData, error: clubError } = await supabase
       .from('clubs')
       .select('*')
       .eq('id', clubId)
       .single()
 
-    if (error || !clubData) {
-      setNotFound(true)
+    if (clubError || !clubData) {
+      setError('Club not found')
       setLoading(false)
       return
     }
-
     setClub(clubData)
 
-    // Check membership
-    if (user) {
-      const { data: memberData } = await supabase
-        .from('club_members')
-        .select('role')
-        .eq('club_id', clubId)
-        .eq('user_id', user.id)
-        .single()
-
-      setMembership(memberData)
-    }
-
-    // Fetch members
+    // Load members with profiles
     const { data: membersData } = await supabase
       .from('club_members')
       .select(`
         id,
         user_id,
         role,
-        profiles (
-          username,
-          display_name,
-          avatar_url
-        )
+        joined_at,
+        profiles:user_id (username, display_name, avatar_url)
       `)
       .eq('club_id', clubId)
+      .order('role', { ascending: true })
 
     if (membersData) {
-      setMembers(membersData.map((m: any) => ({
-        id: m.id,
-        user_id: m.user_id,
-        role: m.role,
-        ...m.profiles,
-      })))
+      const formattedMembers = membersData.map((m: any) => ({
+        ...m,
+        profile: m.profiles || { username: null, display_name: null, avatar_url: null }
+      }))
+      setMembers(formattedMembers)
+
+      // Check if current user is a member
+      if (user) {
+        const membership = formattedMembers.find((m: Member) => m.user_id === user.id)
+        setUserRole(membership?.role || null)
+      }
     }
 
-    // Fetch club books
+    // Load club books
     const { data: booksData } = await supabase
       .from('club_books')
       .select(`
         id,
+        book_id,
         status,
         start_date,
         target_finish_date,
-        books (
-          id,
-          title,
-          author,
-          cover_url
-        )
+        books:book_id (id, title, author, cover_url)
       `)
       .eq('club_id', clubId)
       .order('created_at', { ascending: false })
 
     if (booksData) {
-      setBooks(booksData.map((b: any) => ({
-        id: b.id,
-        status: b.status,
-        start_date: b.start_date,
-        target_finish_date: b.target_finish_date,
-        book: b.books,
-      })))
+      const formattedBooks = booksData.map((b: any) => ({
+        ...b,
+        book: b.books
+      }))
+      setClubBooks(formattedBooks)
     }
 
     setLoading(false)
   }
 
-  async function handleJoin() {
-    if (!user || !club) return
+  async function handleJoinClub() {
+    if (!user) {
+      router.push('/auth/login')
+      return
+    }
 
     const { error } = await supabase
       .from('club_members')
       .insert({
-        club_id: club.id,
+        club_id: clubId,
         user_id: user.id,
-        role: 'member',
+        role: 'member'
       })
 
-    if (!error) {
-      loadClub()
+    if (error) {
+      alert('Failed to join club: ' + error.message)
+      return
     }
+
+    loadClubData()
   }
 
-  async function handleLeave() {
-    if (!user || !club || membership?.role === 'owner') return
+  async function handleLeaveClub() {
+    if (!user || userRole === 'owner') return
 
     if (!confirm('Are you sure you want to leave this club?')) return
 
     const { error } = await supabase
       .from('club_members')
       .delete()
-      .eq('club_id', club.id)
+      .eq('club_id', clubId)
       .eq('user_id', user.id)
 
-    if (!error) {
-      setMembership(null)
-      loadClub()
+    if (error) {
+      alert('Failed to leave club: ' + error.message)
+      return
     }
+
+    loadClubData()
   }
 
-  if (loading) {
+  async function searchBooks() {
+    if (!bookSearch.trim()) return
+    setSearching(true)
+
+    try {
+      const response = await fetch(
+        `https://openlibrary.org/search.json?q=${encodeURIComponent(bookSearch)}&limit=10`
+      )
+      const data = await response.json()
+      setSearchResults(data.docs || [])
+    } catch (err) {
+      console.error('Search failed:', err)
+    }
+
+    setSearching(false)
+  }
+
+  async function addBookToClub(result: BookSearchResult, status: 'current' | 'upcoming') {
+    if (!user || addingBook) return
+    setAddingBook(true)
+
+    try {
+      // First, create or find the book in our database
+      const bookData = {
+        title: result.title,
+        author: result.author_name?.[0] || null,
+        cover_url: result.cover_i 
+          ? `https://covers.openlibrary.org/b/id/${result.cover_i}-L.jpg` 
+          : null,
+        ol_key: result.key
+      }
+
+      // Check if book exists
+      let bookId: string
+      const { data: existingBook } = await supabase
+        .from('books')
+        .select('id')
+        .eq('ol_key', result.key)
+        .single()
+
+      if (existingBook) {
+        bookId = existingBook.id
+      } else {
+        const { data: newBook, error: bookError } = await supabase
+          .from('books')
+          .insert(bookData)
+          .select('id')
+          .single()
+
+        if (bookError || !newBook) {
+          throw new Error('Failed to create book')
+        }
+        bookId = newBook.id
+      }
+
+      // Add to club
+      const { error: clubBookError } = await supabase
+        .from('club_books')
+        .insert({
+          club_id: clubId,
+          book_id: bookId,
+          status,
+          added_by: user.id,
+          start_date: status === 'current' ? new Date().toISOString().split('T')[0] : null
+        })
+
+      if (clubBookError) {
+        if (clubBookError.message.includes('duplicate')) {
+          alert('This book is already in the club')
+        } else {
+          throw clubBookError
+        }
+      }
+
+      setShowAddBook(false)
+      setBookSearch('')
+      setSearchResults([])
+      loadClubData()
+    } catch (err: any) {
+      alert('Failed to add book: ' + err.message)
+    }
+
+    setAddingBook(false)
+  }
+
+  async function updateBookStatus(clubBookId: string, newStatus: 'current' | 'upcoming' | 'finished') {
+    // If setting a book to current, move existing current book to finished
+    if (newStatus === 'current') {
+      const currentBook = clubBooks.find(b => b.status === 'current')
+      if (currentBook) {
+        await supabase
+          .from('club_books')
+          .update({ status: 'finished' })
+          .eq('id', currentBook.id)
+      }
+    }
+
+    await supabase
+      .from('club_books')
+      .update({ status: newStatus })
+      .eq('id', clubBookId)
+
+    loadClubData()
+  }
+
+  async function removeBookFromClub(clubBookId: string) {
+    if (!confirm('Remove this book from the club?')) return
+
+    await supabase
+      .from('club_books')
+      .delete()
+      .eq('id', clubBookId)
+
+    loadClubData()
+  }
+
+  const isAdmin = userRole === 'owner' || userRole === 'admin'
+  const currentBook = clubBooks.find(b => b.status === 'current')
+  const upcomingBooks = clubBooks.filter(b => b.status === 'upcoming')
+  const finishedBooks = clubBooks.filter(b => b.status === 'finished')
+
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-[var(--color-cream)] flex items-center justify-center">
         <div className="text-xl text-[var(--color-forest)]">Loading club...</div>
@@ -183,24 +315,18 @@ export default function ClubDetailPage() {
     )
   }
 
-  if (notFound || !club) {
+  if (error || !club) {
     return (
       <div className="min-h-screen bg-[var(--color-cream)] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">📚</div>
-          <h1 className="text-2xl font-bold text-[var(--color-forest)] mb-2">Club not found</h1>
-          <Link href="/clubs" className="text-[var(--color-forest)] hover:underline">
-            ← Back to clubs
+          <div className="text-xl text-red-600 mb-4">{error || 'Club not found'}</div>
+          <Link href="/clubs" className="text-[var(--color-forest)] underline">
+            Back to clubs
           </Link>
         </div>
       </div>
     )
   }
-
-  const currentBook = books.find(b => b.status === 'current')
-  const upcomingBooks = books.filter(b => b.status === 'upcoming')
-  const finishedBooks = books.filter(b => b.status === 'finished')
-  const isAdmin = membership?.role === 'owner' || membership?.role === 'admin'
 
   return (
     <div className="min-h-screen bg-[var(--color-cream)]">
@@ -210,205 +336,322 @@ export default function ClubDetailPage() {
           <Link href="/clubs" className="text-white/70 hover:text-white text-sm mb-4 inline-block">
             ← Back to clubs
           </Link>
-
-          <div className="flex items-start gap-6">
+          
+          <div className="flex gap-6 items-start">
             {club.cover_url ? (
               <img src={club.cover_url} alt="" className="w-24 h-24 rounded-lg object-cover" />
             ) : (
-              <div className="w-24 h-24 rounded-lg bg-[var(--color-gold)] flex items-center justify-center text-4xl">
+              <div className="w-24 h-24 rounded-lg bg-white/10 flex items-center justify-center text-4xl">
                 📚
               </div>
             )}
-
+            
             <div className="flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-bold">{club.name}</h1>
-                {!club.is_public && <span className="text-white/70">🔒</span>}
+                {!club.is_public && <span className="text-sm bg-white/20 px-2 py-1 rounded">🔒 Private</span>}
               </div>
-              {club.description && (
-                <p className="text-white/80 mt-2">{club.description}</p>
-              )}
-              <div className="flex items-center gap-4 mt-4">
-                <span className="text-white/70">{members.length} members</span>
-                {currentBook && (
-                  <span className="text-[var(--color-gold)]">
-                    📖 Reading: {currentBook.book.title}
-                  </span>
-                )}
-              </div>
+              {club.description && <p className="text-white/70 mt-2">{club.description}</p>}
+              <div className="text-sm text-white/60 mt-2">{members.length} member{members.length !== 1 ? 's' : ''}</div>
             </div>
 
-            {/* Actions */}
+            {/* Join/Leave button */}
             <div className="flex flex-col gap-2">
-              {!membership && user && club.is_public && (
+              {userRole ? (
+                <>
+                  <span className={`text-sm px-3 py-1 rounded-full text-center ${
+                    userRole === 'owner' ? 'bg-yellow-400 text-yellow-900' :
+                    userRole === 'admin' ? 'bg-blue-400 text-blue-900' :
+                    'bg-white/20'
+                  }`}>
+                    {userRole}
+                  </span>
+                  {userRole !== 'owner' && (
+                    <button
+                      onClick={handleLeaveClub}
+                      className="text-sm text-white/60 hover:text-white"
+                    >
+                      Leave Club
+                    </button>
+                  )}
+                </>
+              ) : (
                 <button
-                  onClick={handleJoin}
+                  onClick={handleJoinClub}
                   className="px-4 py-2 bg-[var(--color-gold)] text-[var(--color-forest)] font-medium rounded-lg hover:opacity-90"
                 >
                   Join Club
                 </button>
               )}
-              {membership && membership.role !== 'owner' && (
-                <button
-                  onClick={handleLeave}
-                  className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20"
-                >
-                  Leave Club
-                </button>
-              )}
-              {isAdmin && !club.is_public && (
-                <button
-                  onClick={() => setShowInviteCode(!showInviteCode)}
-                  className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 text-sm"
-                >
-                  {showInviteCode ? 'Hide' : 'Show'} Invite Code
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Invite Code */}
-          {showInviteCode && club.join_code && (
-            <div className="mt-4 p-4 bg-white/10 rounded-lg">
-              <p className="text-sm text-white/70 mb-1">Share this code to invite members:</p>
-              <div className="flex items-center gap-2">
-                <code className="text-2xl font-mono font-bold tracking-wider">{club.join_code}</code>
-                <button
-                  onClick={() => navigator.clipboard.writeText(club.join_code!)}
-                  className="text-sm text-white/70 hover:text-white"
-                >
-                  📋 Copy
-                </button>
-              </div>
+          {/* Join Code (for owners of private clubs) */}
+          {userRole === 'owner' && !club.is_public && club.join_code && (
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <button
+                onClick={() => setShowJoinCode(!showJoinCode)}
+                className="text-sm text-white/70 hover:text-white"
+              >
+                {showJoinCode ? 'Hide' : 'Show'} invite code
+              </button>
+              {showJoinCode && (
+                <div className="mt-2 p-3 bg-white/10 rounded-lg">
+                  <span className="font-mono text-lg tracking-wider">{club.join_code}</span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(club.join_code!)}
+                    className="ml-3 text-sm underline"
+                  >
+                    Copy
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Books Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Currently Reading */}
-            {currentBook && (
-              <section>
-                <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4 flex items-center gap-2">
-                  📖 Currently Reading
-                </h2>
-                <div className="card p-4 flex gap-4">
-                  {currentBook.book.cover_url ? (
-                    <img src={currentBook.book.cover_url} alt="" className="w-24 h-36 object-cover rounded" />
-                  ) : (
-                    <div className="w-24 h-36 bg-gray-200 rounded flex items-center justify-center text-2xl">📚</div>
+      <main className="max-w-4xl mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Left Column: Books */}
+        <div className="md:col-span-2 space-y-8">
+          {/* Currently Reading */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-[var(--color-forest)]">📖 Currently Reading</h2>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowAddBook(true)}
+                  className="text-sm text-[var(--color-forest)] underline"
+                >
+                  + Add Book
+                </button>
+              )}
+            </div>
+            
+            {currentBook ? (
+              <div className="card p-4 flex gap-4">
+                {currentBook.book.cover_url ? (
+                  <img src={currentBook.book.cover_url} alt="" className="w-20 h-28 object-cover rounded" />
+                ) : (
+                  <div className="w-20 h-28 bg-gray-200 rounded flex items-center justify-center">📕</div>
+                )}
+                <div className="flex-1">
+                  <h3 className="font-semibold text-[var(--color-forest)]">{currentBook.book.title}</h3>
+                  {currentBook.book.author && (
+                    <p className="text-sm text-gray-600">by {currentBook.book.author}</p>
                   )}
-                  <div>
-                    <h3 className="text-lg font-semibold text-[var(--color-forest)]">{currentBook.book.title}</h3>
-                    <p className="text-gray-600">{currentBook.book.author}</p>
-                    {currentBook.target_finish_date && (
-                      <p className="text-sm text-gray-500 mt-2">
-                        Target finish: {new Date(currentBook.target_finish_date).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Up Next */}
-            {upcomingBooks.length > 0 && (
-              <section>
-                <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4">📚 Up Next</h2>
-                <div className="space-y-3">
-                  {upcomingBooks.map(b => (
-                    <div key={b.id} className="card p-3 flex gap-3 items-center">
-                      {b.book.cover_url ? (
-                        <img src={b.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
-                      ) : (
-                        <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center">📖</div>
-                      )}
-                      <div>
-                        <h3 className="font-medium text-[var(--color-forest)]">{b.book.title}</h3>
-                        <p className="text-sm text-gray-600">{b.book.author}</p>
-                      </div>
+                  {currentBook.start_date && (
+                    <p className="text-xs text-gray-500 mt-2">Started: {new Date(currentBook.start_date).toLocaleDateString()}</p>
+                  )}
+                  {isAdmin && (
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => updateBookStatus(currentBook.id, 'finished')}
+                        className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded"
+                      >
+                        Mark Finished
+                      </button>
+                      <button
+                        onClick={() => removeBookFromClub(currentBook.id)}
+                        className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded"
+                      >
+                        Remove
+                      </button>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </section>
-            )}
-
-            {/* Previously Read */}
-            {finishedBooks.length > 0 && (
-              <section>
-                <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4">✓ Previously Read</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {finishedBooks.map(b => (
-                    <div key={b.id} className="card p-3 text-center">
-                      {b.book.cover_url ? (
-                        <img src={b.book.cover_url} alt="" className="w-full h-32 object-cover rounded mb-2" />
-                      ) : (
-                        <div className="w-full h-32 bg-gray-200 rounded mb-2 flex items-center justify-center text-2xl">📖</div>
-                      )}
-                      <h3 className="text-sm font-medium text-[var(--color-forest)] line-clamp-2">{b.book.title}</h3>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {books.length === 0 && (
+              </div>
+            ) : (
               <div className="card p-8 text-center text-gray-500">
-                No books added yet.
-                {isAdmin && ' Add some books to get started!'}
+                No book currently being read
+                {isAdmin && <p className="text-sm mt-2">Click "Add Book" to get started!</p>}
               </div>
             )}
+          </section>
 
-            {/* Add Book Button (for admins) */}
-            {isAdmin && (
-              <Link
-                href={`/clubs/${club.id}/add-book`}
-                className="block card p-4 text-center text-[var(--color-forest)] hover:bg-gray-50 transition-colors"
-              >
-                + Add a Book
-              </Link>
-            )}
-          </div>
-
-          {/* Members Sidebar */}
-          <div>
-            <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4">Members</h2>
-            <div className="card p-4 space-y-3">
-              {members.map(member => (
-                <Link
-                  key={member.id}
-                  href={`/user/${member.username}`}
-                  className="flex items-center gap-3 hover:bg-gray-50 p-2 -m-2 rounded-lg transition-colors"
-                >
-                  {member.avatar_url ? (
-                    <img src={member.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-[var(--color-gold)] flex items-center justify-center text-[var(--color-forest)] font-bold">
-                      {(member.display_name || member.username)[0]?.toUpperCase()}
+          {/* Reading Queue */}
+          <section>
+            <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4">📚 Reading Queue</h2>
+            {upcomingBooks.length === 0 ? (
+              <div className="card p-6 text-center text-gray-500">
+                No books in queue yet
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {upcomingBooks.map((book) => (
+                  <div key={book.id} className="card p-3 flex gap-3 items-center">
+                    {book.book.cover_url ? (
+                      <img src={book.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
+                    ) : (
+                      <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center text-sm">📕</div>
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-medium text-[var(--color-forest)]">{book.book.title}</h3>
+                      {book.book.author && (
+                        <p className="text-sm text-gray-600">{book.book.author}</p>
+                      )}
                     </div>
+                    {isAdmin && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateBookStatus(book.id, 'current')}
+                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded"
+                        >
+                          Start Reading
+                        </button>
+                        <button
+                          onClick={() => removeBookFromClub(book.id)}
+                          className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Finished Books */}
+          {finishedBooks.length > 0 && (
+            <section>
+              <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4">✅ Finished</h2>
+              <div className="space-y-3">
+                {finishedBooks.map((book) => (
+                  <div key={book.id} className="card p-3 flex gap-3 items-center opacity-70">
+                    {book.book.cover_url ? (
+                      <img src={book.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
+                    ) : (
+                      <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center text-sm">📕</div>
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-medium text-[var(--color-forest)]">{book.book.title}</h3>
+                      {book.book.author && (
+                        <p className="text-sm text-gray-600">{book.book.author}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Right Column: Members */}
+        <aside>
+          <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4">👥 Members</h2>
+          <div className="card p-4 space-y-3">
+            {members.map((member) => (
+              <div key={member.id} className="flex items-center gap-3">
+                {member.profile.avatar_url ? (
+                  <img src={member.profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-forest)] flex items-center justify-center text-white text-sm">
+                    {(member.profile.display_name || member.profile.username || '?')[0].toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <Link 
+                    href={`/user/${member.profile.username || member.user_id}`}
+                    className="font-medium text-[var(--color-forest)] hover:underline truncate block"
+                  >
+                    {member.profile.display_name || member.profile.username || 'Anonymous'}
+                  </Link>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    member.role === 'owner' ? 'bg-yellow-100 text-yellow-700' :
+                    member.role === 'admin' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {member.role}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </main>
+
+      {/* Add Book Modal */}
+      {showAddBook && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-[var(--color-forest)]">Add Book to Club</h2>
+              <button
+                onClick={() => {
+                  setShowAddBook(false)
+                  setBookSearch('')
+                  setSearchResults([])
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={bookSearch}
+                onChange={(e) => setBookSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchBooks()}
+                placeholder="Search for a book..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-forest)]"
+              />
+              <button
+                onClick={searchBooks}
+                disabled={searching}
+                className="px-4 py-2 bg-[var(--color-forest)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
+                {searching ? '...' : 'Search'}
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {searchResults.map((result) => (
+                <div key={result.key} className="flex gap-3 p-3 border border-gray-200 rounded-lg">
+                  {result.cover_i ? (
+                    <img
+                      src={`https://covers.openlibrary.org/b/id/${result.cover_i}-M.jpg`}
+                      alt=""
+                      className="w-12 h-16 object-cover rounded"
+                    />
+                  ) : (
+                    <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center text-sm">📕</div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">
-                      {member.display_name || member.username}
-                    </div>
-                    <div className="text-xs text-gray-500">@{member.username}</div>
+                    <h3 className="font-medium text-[var(--color-forest)] truncate">{result.title}</h3>
+                    {result.author_name && (
+                      <p className="text-sm text-gray-600 truncate">{result.author_name.join(', ')}</p>
+                    )}
                   </div>
-                  {member.role !== 'member' && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      member.role === 'owner' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {member.role}
-                    </span>
-                  )}
-                </Link>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => addBookToClub(result, 'current')}
+                      disabled={addingBook}
+                      className="text-xs px-2 py-1 bg-[var(--color-forest)] text-white rounded hover:opacity-90 disabled:opacity-50"
+                    >
+                      Read Now
+                    </button>
+                    <button
+                      onClick={() => addBookToClub(result, 'upcoming')}
+                      disabled={addingBook}
+                      className="text-xs px-2 py-1 border border-[var(--color-forest)] text-[var(--color-forest)] rounded hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Add to Queue
+                    </button>
+                  </div>
+                </div>
               ))}
+
+              {searchResults.length === 0 && bookSearch && !searching && (
+                <p className="text-center text-gray-500 py-4">No results found. Try a different search.</p>
+              )}
             </div>
           </div>
         </div>
-      </main>
+      )}
     </div>
   )
 }
