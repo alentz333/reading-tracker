@@ -6,218 +6,292 @@ import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
 import BookSearch from '@/components/BookSearch';
-import BookCard from '@/components/BookCard';
-import GoodreadsImport from '@/components/GoodreadsImport';
-import CameraScanner from '@/components/CameraScanner';
-import UserSearch from '@/components/UserSearch';
+import { SwipeStack } from '@/components/SwipeCard';
 
-type TabType = 'all' | 'reading' | 'read' | 'want-to-read';
+type ViewMode = 'library' | 'discover';
 
 export default function Home() {
   const { books, loading, stats, addBook, updateBook, deleteBook, isAuthenticated } = useBooks();
-  const [activeTab, setActiveTab] = useState<TabType>('all');
-  const [showImport, setShowImport] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('library');
+  const [searchResults, setSearchResults] = useState<Book[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
 
-  const handleAddBook = async (book: Book) => {
-    await addBook(book);
+  const currentlyReading = books.filter(b => b.status === 'reading');
+  const recentlyRead = books.filter(b => b.status === 'read').slice(0, 4);
+  const wantToRead = books.filter(b => b.status === 'want-to-read').slice(0, 6);
+
+  const handleAddBook = async (book: Book, status?: ReadingStatus) => {
+    const bookToAdd = { ...book, status: status || book.status };
+    if (status === 'reading') {
+      bookToAdd.dateStarted = new Date().toISOString().split('T')[0];
+    }
+    await addBook(bookToAdd);
   };
 
-  const handleUpdateBook = async (id: string, updates: Partial<Book>) => {
-    await updateBook(id, updates);
-  };
-
-  const handleDeleteBook = async (id: string) => {
-    if (confirm('Remove this book from your library?')) {
-      await deleteBook(id);
+  const handleSearchResults = (results: Book[]) => {
+    setSearchResults(results.filter(r => !books.find(b => b.googleBooksId === r.googleBooksId)));
+    if (results.length > 0) {
+      setViewMode('discover');
     }
   };
-
-  const handleImport = async (importedBooks: Book[]) => {
-    // Import books one by one
-    for (const book of importedBooks) {
-      await addBook(book);
-    }
-    setShowImport(false);
-  };
-
-  const filteredBooks = books.filter(book => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'reading') return book.status === 'reading';
-    if (activeTab === 'read') return book.status === 'read';
-    if (activeTab === 'want-to-read') return book.status === 'want-to-read';
-    return true;
-  });
-
-  const tabs: { id: TabType; label: string; count: number }[] = [
-    { id: 'all', label: 'All Books', count: books.length },
-    { id: 'reading', label: 'Currently Reading', count: stats.currentlyReading },
-    { id: 'read', label: 'Read', count: stats.totalBooks },
-    { id: 'want-to-read', label: 'Want to Read', count: stats.wantToRead },
-  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--color-cream)] flex items-center justify-center">
-        <div className="text-xl text-[var(--color-forest)]">Loading your library...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-white/60">Loading your library...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-cream)]">
+    <div className="min-h-screen">
       <Header stats={stats} />
       
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Add Books */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Quick Links */}
-            {isAuthenticated && (
-              <div className="card p-4 space-y-3">
-                <Link 
-                  href="/clubs" 
-                  className="flex items-center gap-2 text-[var(--color-forest)] hover:underline font-medium"
-                >
-                  📖 Book Clubs →
-                </Link>
-                <hr className="border-gray-100" />
-                <h2 className="text-sm font-semibold text-[var(--color-forest)]">
-                  🔍 Find Readers
-                </h2>
-                <UserSearch />
-              </div>
-            )}
-            
-            <BookSearch onAddBook={handleAddBook} />
-            
-            {/* Camera Scan Button */}
-            <button
-              onClick={() => setShowCamera(true)}
-              className="w-full btn-primary flex items-center justify-center gap-2"
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* View Toggle */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="tabs">
+            <button 
+              className={`tab ${viewMode === 'library' ? 'active' : ''}`}
+              onClick={() => setViewMode('library')}
             >
-              <span>📷</span> Scan Book Cover
+              📚 Library
             </button>
-            
-            <button
-              onClick={() => setShowImport(!showImport)}
-              className="w-full btn-secondary"
+            <button 
+              className={`tab ${viewMode === 'discover' ? 'active' : ''}`}
+              onClick={() => setViewMode('discover')}
             >
-              {showImport ? 'Hide Goodreads Import' : 'Import from Goodreads'}
+              ✨ Discover
             </button>
-            
-            {showImport && <GoodreadsImport onImport={handleImport} />}
-            
-            {/* Stats Card */}
-            {stats.totalBooks > 0 && (
-              <div className="card p-6">
-                <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4">
-                  Reading Stats
-                </h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total books read</span>
-                    <span className="font-semibold">{stats.totalBooks}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Books this year</span>
-                    <span className="font-semibold">{stats.booksThisYear}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Pages this year</span>
-                    <span className="font-semibold">{stats.pagesThisYear.toLocaleString()}</span>
-                  </div>
-                  {stats.averageRating > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Average rating</span>
-                      <span className="font-semibold">⭐ {stats.averageRating}</span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Books by Year */}
-                {Object.keys(stats.byYear).length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2">By Year</h3>
-                    <div className="space-y-1">
-                      {Object.entries(stats.byYear)
-                        .sort(([a], [b]) => Number(b) - Number(a))
-                        .slice(0, 5)
-                        .map(([year, count]) => (
-                          <div key={year} className="flex justify-between text-sm">
-                            <span className="text-gray-600">{year}</span>
-                            <span>{count} books</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           
-          {/* Right Column - Book List */}
-          <div className="lg:col-span-2">
-            {/* Tabs */}
-            <div className="flex gap-2 mb-6 flex-wrap">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-[var(--color-forest)] text-white'
-                      : 'bg-white text-[var(--color-ink)] hover:bg-gray-100'
-                  }`}
-                >
-                  {tab.label} ({tab.count})
-                </button>
-              ))}
+          <button 
+            className="btn btn-secondary"
+            onClick={() => setShowSearch(!showSearch)}
+          >
+            🔍 Search
+          </button>
+        </div>
+
+        {/* Search Panel */}
+        {showSearch && (
+          <div className="bento-card mb-6 animate-fade-in">
+            <BookSearch onBookSelect={handleAddBook} onResults={handleSearchResults} />
+          </div>
+        )}
+
+        {viewMode === 'library' ? (
+          /* Bento Grid Library View */
+          <div className="bento-grid">
+            {/* Stats Cards */}
+            <div className="bento-card span-1">
+              <div className="stat-value">{stats.totalBooks}</div>
+              <div className="stat-label">Books Read</div>
             </div>
             
-            {/* Book Grid */}
-            {filteredBooks.length === 0 ? (
-              <div className="card p-12 text-center">
-                <div className="text-6xl mb-4">📚</div>
-                <h3 className="text-xl font-semibold text-[var(--color-forest)] mb-2">
-                  {activeTab === 'all' ? 'Your library is empty' : `No books ${activeTab === 'reading' ? 'being read' : activeTab === 'read' ? 'read yet' : 'on your list'}`}
-                </h3>
-                <p className="text-gray-600">
-                  Search for books above or import from Goodreads to get started.
-                </p>
+            <div className="bento-card span-1">
+              <div className="stat-value">{stats.currentlyReading}</div>
+              <div className="stat-label">Reading</div>
+            </div>
+            
+            <div className="bento-card span-1">
+              <div className="flex items-center gap-2">
+                <span className="streak-fire">🔥</span>
+                <div className="stat-value">{stats.streak || 0}</div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredBooks.map(book => (
-                  <BookCard
-                    key={book.id}
-                    book={book}
-                    onUpdate={handleUpdateBook}
-                    onDelete={handleDeleteBook}
-                  />
-                ))}
+              <div className="stat-label">Day Streak</div>
+            </div>
+            
+            <div className="bento-card span-1">
+              <div className="stat-value">{stats.wantToRead}</div>
+              <div className="stat-label">Want to Read</div>
+            </div>
+
+            {/* Currently Reading - Large Card */}
+            <div className="bento-card span-2 row-2">
+              <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-4">
+                📖 Currently Reading
+              </h2>
+              {currentlyReading.length > 0 ? (
+                <div className="space-y-4">
+                  {currentlyReading.slice(0, 2).map(book => (
+                    <div key={book.id} className="flex gap-3">
+                      {book.coverUrl ? (
+                        <img 
+                          src={book.coverUrl} 
+                          alt={book.title}
+                          className="w-16 h-24 object-cover rounded-lg shadow-lg"
+                        />
+                      ) : (
+                        <div className="w-16 h-24 book-cover-placeholder text-2xl">📖</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-white truncate">{book.title}</h3>
+                        <p className="text-sm text-white/50 truncate">{book.author}</p>
+                        <div className="reading-progress mt-2">
+                          <div 
+                            className="reading-progress-bar" 
+                            style={{ width: `${book.progress || 30}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-white/40 mt-1">{book.progress || 30}% complete</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state py-8">
+                  <div className="empty-state-icon">📚</div>
+                  <div className="empty-state-description">Start reading something!</div>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Add */}
+            <div className="bento-card span-2">
+              <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
+                ✨ Quick Add
+              </h2>
+              <button 
+                className="btn btn-primary w-full"
+                onClick={() => { setShowSearch(true); setViewMode('discover'); }}
+              >
+                🔍 Search Books
+              </button>
+              <div className="flex gap-2 mt-3">
+                <button className="btn btn-secondary flex-1 text-sm">
+                  📷 Scan
+                </button>
+                <button className="btn btn-secondary flex-1 text-sm">
+                  📥 Import
+                </button>
+              </div>
+            </div>
+
+            {/* Recently Read */}
+            <div className="bento-card span-2 md:span-3 lg:span-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+                  ✅ Recently Read
+                </h2>
+                <Link href="/library?filter=read" className="text-xs text-indigo-400 hover:underline">
+                  View all →
+                </Link>
+              </div>
+              {recentlyRead.length > 0 ? (
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {recentlyRead.map(book => (
+                    <div key={book.id} className="flex-shrink-0 w-24 group cursor-pointer">
+                      {book.coverUrl ? (
+                        <img 
+                          src={book.coverUrl} 
+                          alt={book.title}
+                          className="book-cover w-full"
+                        />
+                      ) : (
+                        <div className="book-cover-placeholder w-full">📖</div>
+                      )}
+                      <div className="mt-2">
+                        <div className="star-rating justify-center">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <span key={star} className={`star text-xs ${star <= (book.rating || 0) ? 'filled' : ''}`}>
+                              ⭐
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state py-6">
+                  <div className="empty-state-description">No books read yet</div>
+                </div>
+              )}
+            </div>
+
+            {/* Want to Read */}
+            <div className="bento-card span-2 md:span-3 lg:span-2 row-2">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+                  📚 Want to Read
+                </h2>
+                <Link href="/library?filter=want" className="text-xs text-indigo-400 hover:underline">
+                  View all →
+                </Link>
+              </div>
+              {wantToRead.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {wantToRead.map(book => (
+                    <div key={book.id} className="cursor-pointer group">
+                      {book.coverUrl ? (
+                        <img 
+                          src={book.coverUrl} 
+                          alt={book.title}
+                          className="book-cover w-full"
+                        />
+                      ) : (
+                        <div className="book-cover-placeholder w-full text-lg">📖</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state py-6">
+                  <div className="empty-state-description">Swipe to discover books!</div>
+                </div>
+              )}
+            </div>
+
+            {/* Profile / Social */}
+            {isAuthenticated && (
+              <div className="bento-card span-2">
+                <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
+                  👤 Profile
+                </h2>
+                <div className="flex gap-3">
+                  <Link href="/profile" className="btn btn-secondary flex-1 text-sm">
+                    My Profile
+                  </Link>
+                  <Link href="/clubs" className="btn btn-secondary flex-1 text-sm">
+                    Book Clubs
+                  </Link>
+                </div>
               </div>
             )}
           </div>
-        </div>
+        ) : (
+          /* Discover / Swipe View */
+          <div className="animate-slide-up">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-white mb-2">Discover Books</h2>
+              <p className="text-white/50 text-sm">Swipe left to save, right to skip, up for reading now</p>
+            </div>
+            
+            {searchResults.length > 0 ? (
+              <SwipeStack 
+                books={searchResults}
+                onAddBook={handleAddBook}
+                onSkip={() => {}}
+              />
+            ) : (
+              <div className="empty-state py-12">
+                <div className="empty-state-icon">🔍</div>
+                <div className="empty-state-title">Search for books</div>
+                <div className="empty-state-description">
+                  Find your next read by searching above
+                </div>
+                <button 
+                  className="btn btn-primary mt-4"
+                  onClick={() => setShowSearch(true)}
+                >
+                  Start Searching
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
-      
-      {/* Footer */}
-      <footer className="py-8 text-center text-sm text-gray-500">
-        <p>
-          {isAuthenticated 
-            ? 'Your books are synced to the cloud ☁️' 
-            : 'Data stored locally • Sign up to sync across devices'}
-        </p>
-      </footer>
-      
-      {/* Camera Scanner Modal */}
-      {showCamera && (
-        <CameraScanner
-          onAddBook={handleAddBook}
-          onClose={() => setShowCamera(false)}
-        />
-      )}
     </div>
   );
 }

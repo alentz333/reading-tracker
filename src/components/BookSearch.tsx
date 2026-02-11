@@ -1,225 +1,172 @@
 'use client';
 
-import { useState } from 'react';
-import { Book, ReadingStatus } from '@/types/book';
-import { generateId } from '@/lib/storage';
-
-interface SearchResult {
-  key: string;
-  title: string;
-  author: string;
-  coverUrl: string | null;
-  isbn?: string;
-  pageCount?: number;
-  publishedYear?: number;
-}
+import { useState, useEffect, useRef } from 'react';
+import { Book } from '@/types/book';
 
 interface BookSearchProps {
-  onAddBook: (book: Book) => void;
+  onBookSelect: (book: Book) => void;
+  onResults?: (results: Book[]) => void;
 }
 
-export default function BookSearch({ onAddBook }: BookSearchProps) {
+export default function BookSearch({ onBookSelect, onResults }: BookSearchProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showManual, setShowManual] = useState(false);
-  const [manualBook, setManualBook] = useState({
-    title: '',
-    author: '',
-    pageCount: '',
-    publishedYear: '',
-  });
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const search = async () => {
-    if (!query.trim()) return;
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const searchBooks = async (searchQuery: string) => {
+    if (!searchQuery.trim()) {
+      setResults([]);
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=10`
+      );
       const data = await response.json();
-      setResults(data.books || []);
+      
+      const books: Book[] = (data.items || []).map((item: any) => ({
+        id: `temp-${item.id}`,
+        googleBooksId: item.id,
+        title: item.volumeInfo.title,
+        author: item.volumeInfo.authors?.join(', ') || 'Unknown Author',
+        coverUrl: item.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'),
+        pageCount: item.volumeInfo.pageCount,
+        description: item.volumeInfo.description,
+        isbn: item.volumeInfo.industryIdentifiers?.[0]?.identifier,
+        publishedDate: item.volumeInfo.publishedDate,
+        status: 'want-to-read' as const,
+        isPublic: true,
+      }));
+      
+      setResults(books);
     } catch (error) {
       console.error('Search error:', error);
+      setResults([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') search();
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+    setShowResults(true);
+
+    // Debounce search
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      searchBooks(value);
+    }, 300);
   };
 
-  const addFromSearch = (result: SearchResult, status: ReadingStatus) => {
-    const book: Book = {
-      id: generateId(),
-      title: result.title,
-      author: result.author,
-      coverUrl: result.coverUrl || undefined,
-      isbn: result.isbn,
-      pageCount: result.pageCount,
-      publishedYear: result.publishedYear,
-      status,
-      addedAt: new Date().toISOString(),
-      source: 'openlibrary',
-    };
-    
-    if (status === 'reading') {
-      book.dateStarted = new Date().toISOString().split('T')[0];
-    } else if (status === 'read') {
-      book.dateFinished = new Date().toISOString().split('T')[0];
-    }
-    
-    onAddBook(book);
-    setResults([]);
+  const handleSelect = (book: Book) => {
+    onBookSelect(book);
     setQuery('');
+    setResults([]);
+    setShowResults(false);
   };
 
-  const addManualBook = (status: ReadingStatus) => {
-    if (!manualBook.title.trim() || !manualBook.author.trim()) return;
-    
-    const book: Book = {
-      id: generateId(),
-      title: manualBook.title,
-      author: manualBook.author,
-      pageCount: manualBook.pageCount ? parseInt(manualBook.pageCount) : undefined,
-      publishedYear: manualBook.publishedYear ? parseInt(manualBook.publishedYear) : undefined,
-      status,
-      addedAt: new Date().toISOString(),
-      source: 'manual',
-    };
-    
-    if (status === 'reading') {
-      book.dateStarted = new Date().toISOString().split('T')[0];
-    } else if (status === 'read') {
-      book.dateFinished = new Date().toISOString().split('T')[0];
+  const handleSwipeMode = () => {
+    if (results.length > 0 && onResults) {
+      onResults(results);
+      setShowResults(false);
     }
-    
-    onAddBook(book);
-    setManualBook({ title: '', author: '', pageCount: '', publishedYear: '' });
-    setShowManual(false);
   };
 
   return (
-    <div className="card p-6">
-      <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4">
-        Add a Book
-      </h2>
-      
-      {/* Search */}
-      <div className="flex gap-3 mb-4">
+    <div ref={searchRef} className="relative">
+      {/* Search Input */}
+      <div className="search-container">
+        <span className="search-icon">🔍</span>
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Search by title or author..."
-          className="input-field flex-1"
+          onChange={handleInputChange}
+          onFocus={() => setShowResults(true)}
+          placeholder="Search books by title, author, or ISBN..."
+          className="input search-input"
         />
-        <button onClick={search} disabled={loading} className="btn-primary">
-          {loading ? 'Searching...' : 'Search'}
-        </button>
-      </div>
-      
-      <button
-        onClick={() => setShowManual(!showManual)}
-        className="text-[var(--color-forest)] underline text-sm mb-4"
-      >
-        {showManual ? 'Hide manual entry' : 'Or add manually'}
-      </button>
-      
-      {/* Manual Entry Form */}
-      {showManual && (
-        <div className="bg-[var(--color-parchment)] p-4 rounded-lg mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-            <input
-              type="text"
-              value={manualBook.title}
-              onChange={(e) => setManualBook({ ...manualBook, title: e.target.value })}
-              placeholder="Title *"
-              className="input-field"
-            />
-            <input
-              type="text"
-              value={manualBook.author}
-              onChange={(e) => setManualBook({ ...manualBook, author: e.target.value })}
-              placeholder="Author *"
-              className="input-field"
-            />
-            <input
-              type="number"
-              value={manualBook.pageCount}
-              onChange={(e) => setManualBook({ ...manualBook, pageCount: e.target.value })}
-              placeholder="Page count"
-              className="input-field"
-            />
-            <input
-              type="number"
-              value={manualBook.publishedYear}
-              onChange={(e) => setManualBook({ ...manualBook, publishedYear: e.target.value })}
-              placeholder="Year published"
-              className="input-field"
-            />
+        {loading && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="w-5 h-5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={() => addManualBook('read')} className="btn-primary text-sm">
-              Add as Read
+        )}
+      </div>
+
+      {/* Results Dropdown */}
+      {showResults && results.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--color-bg-elevated)] border border-[var(--glass-border)] rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in">
+          {/* Swipe Mode Button */}
+          {onResults && (
+            <button
+              onClick={handleSwipeMode}
+              className="w-full px-4 py-3 flex items-center justify-between bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors border-b border-[var(--glass-border)]"
+            >
+              <span className="text-sm font-medium text-indigo-400">
+                ✨ Swipe through {results.length} results
+              </span>
+              <span className="text-xs text-white/40">→</span>
             </button>
-            <button onClick={() => addManualBook('reading')} className="btn-secondary text-sm">
-              Currently Reading
-            </button>
-            <button onClick={() => addManualBook('want-to-read')} className="btn-secondary text-sm">
-              Want to Read
-            </button>
+          )}
+
+          {/* Results List */}
+          <div className="max-h-80 overflow-y-auto">
+            {results.map((book) => (
+              <button
+                key={book.googleBooksId}
+                onClick={() => handleSelect(book)}
+                className="w-full px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors text-left"
+              >
+                {book.coverUrl ? (
+                  <img
+                    src={book.coverUrl}
+                    alt={book.title}
+                    className="w-10 h-14 object-cover rounded shadow-sm flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs">📖</span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-white text-sm truncate">{book.title}</p>
+                  <p className="text-xs text-white/50 truncate">{book.author}</p>
+                  {book.publishedDate && (
+                    <p className="text-xs text-white/30 mt-0.5">
+                      {book.publishedDate.split('-')[0]}
+                    </p>
+                  )}
+                </div>
+                <span className="text-xs text-indigo-400 flex-shrink-0">+ Add</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
-      
-      {/* Search Results */}
-      {results.length > 0 && (
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {results.map((result) => (
-            <div
-              key={result.key}
-              className="flex gap-4 p-3 bg-[var(--color-parchment)] rounded-lg"
-            >
-              {result.coverUrl ? (
-                <img
-                  src={result.coverUrl}
-                  alt={result.title}
-                  className="w-16 h-24 object-cover rounded shadow"
-                />
-              ) : (
-                <div className="w-16 h-24 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
-                  No cover
-                </div>
-              )}
-              <div className="flex-1">
-                <h3 className="font-semibold text-[var(--color-ink)]">{result.title}</h3>
-                <p className="text-sm text-gray-600">{result.author}</p>
-                {result.publishedYear && (
-                  <p className="text-xs text-gray-500">{result.publishedYear}</p>
-                )}
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  <button
-                    onClick={() => addFromSearch(result, 'read')}
-                    className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
-                  >
-                    Read
-                  </button>
-                  <button
-                    onClick={() => addFromSearch(result, 'reading')}
-                    className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
-                  >
-                    Reading
-                  </button>
-                  <button
-                    onClick={() => addFromSearch(result, 'want-to-read')}
-                    className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                  >
-                    Want to Read
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+
+      {/* No Results */}
+      {showResults && query && !loading && results.length === 0 && (
+        <div className="absolute top-full left-0 right-0 mt-2 p-6 bg-[var(--color-bg-elevated)] border border-[var(--glass-border)] rounded-xl shadow-2xl text-center">
+          <p className="text-white/50 text-sm">No books found for &ldquo;{query}&rdquo;</p>
+          <p className="text-white/30 text-xs mt-1">Try a different search term</p>
         </div>
       )}
     </div>

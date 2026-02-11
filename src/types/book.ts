@@ -6,16 +6,20 @@ export interface Book {
   author: string;
   coverUrl?: string;
   isbn?: string;
+  googleBooksId?: string;
   pageCount?: number;
   publishedYear?: number;
+  publishedDate?: string;
+  description?: string;
   status: ReadingStatus;
   rating?: number; // 1-5 stars
+  progress?: number; // 0-100 percentage for reading
   dateStarted?: string;
   dateFinished?: string;
   review?: string;
   genres?: string[];
-  addedAt: string;
-  source: 'manual' | 'goodreads' | 'openlibrary';
+  addedAt?: string;
+  source?: 'manual' | 'goodreads' | 'openlibrary' | 'google';
   isPublic?: boolean; // Default true - visible on profile
 }
 
@@ -63,6 +67,7 @@ export interface ReadingStats {
   averageRating: number;
   currentlyReading: number;
   wantToRead: number;
+  streak?: number;
   byYear: Record<number, number>;
   byGenre: Record<string, number>;
 }
