@@ -59,7 +59,10 @@ export default function Home() {
             </button>
             <button 
               className={`tab ${viewMode === 'discover' ? 'active' : ''}`}
-              onClick={() => setViewMode('discover')}
+              onClick={() => {
+                setViewMode('discover');
+                setShowSearch(true); // Auto-show search in discover mode
+              }}
             >
               ✨ Discover
             </button>
@@ -73,8 +76,8 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Search Panel */}
-        {showSearch && (
+        {/* Search Panel - always show in discover mode with no results, or when toggled */}
+        {(showSearch || (viewMode === 'discover' && searchResults.length === 0)) && (
           <div className="bento-card mb-6 animate-fade-in">
             <BookSearch onBookSelect={handleAddBook} onResults={handleSearchResults} />
           </div>
