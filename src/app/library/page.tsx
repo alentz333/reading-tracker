@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Book, ReadingStatus } from '@/types/book';
@@ -10,7 +10,7 @@ import BookCard from '@/components/BookCard';
 
 type FilterType = 'all' | 'reading' | 'read' | 'want';
 
-export default function LibraryPage() {
+function LibraryContent() {
   const searchParams = useSearchParams();
   const initialFilter = (searchParams.get('filter') as FilterType) || 'all';
   const [filter, setFilter] = useState<FilterType>(initialFilter);
@@ -48,8 +48,8 @@ export default function LibraryPage() {
       case 'recent':
       default:
         filtered.sort((a, b) => {
-          const dateA = b.dateFinished || b.dateStarted || b.dateAdded || '';
-          const dateB = a.dateFinished || a.dateStarted || a.dateAdded || '';
+          const dateA = b.dateFinished || b.dateStarted || b.addedAt || '';
+          const dateB = a.dateFinished || a.dateStarted || a.addedAt || '';
           return dateA.localeCompare(dateB);
         });
     }
@@ -144,5 +144,17 @@ export default function LibraryPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-white/60">Loading...</div>
+      </div>
+    }>
+      <LibraryContent />
+    </Suspense>
   );
 }
