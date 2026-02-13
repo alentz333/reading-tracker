@@ -158,7 +158,7 @@ export async function fetchUserStats(): Promise<UserStats | null> {
   if (!user) return null
 
   const { data, error } = await supabase
-    .from('users')
+    .from('profiles')
     .select('xp, level, current_streak, longest_streak, streak_freezes, last_active_date')
     .eq('id', user.id)
     .single()
@@ -342,7 +342,7 @@ export async function updateStreak(): Promise<{ streak: number; increased: boole
 
   // Get current streak info
   const { data: userData } = await supabase
-    .from('users')
+    .from('profiles')
     .select('current_streak, longest_streak, last_active_date')
     .eq('id', user.id)
     .single()
@@ -379,7 +379,7 @@ export async function updateStreak(): Promise<{ streak: number; increased: boole
   // Update user
   const longestStreak = Math.max(newStreak, userData.longest_streak || 0)
   await supabase
-    .from('users')
+    .from('profiles')
     .update({
       current_streak: newStreak,
       longest_streak: longestStreak,

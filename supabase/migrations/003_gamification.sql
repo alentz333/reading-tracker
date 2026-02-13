@@ -2,15 +2,15 @@
 -- Run this in Supabase SQL Editor
 
 -- ============================================
--- 1. Add XP and Level columns to users table
+-- 1. Add XP and Level columns to profiles table
 -- ============================================
 
-ALTER TABLE users ADD COLUMN IF NOT EXISTS xp integer DEFAULT 0;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS level integer DEFAULT 1;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS current_streak integer DEFAULT 0;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS longest_streak integer DEFAULT 0;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_date date;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_freezes integer DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS xp integer DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS level integer DEFAULT 1;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS current_streak integer DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS longest_streak integer DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_active_date date;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS streak_freezes integer DEFAULT 0;
 
 -- ============================================
 -- 2. XP Events table (history of XP earned)
@@ -18,7 +18,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_freezes integer DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS xp_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   amount integer NOT NULL,
   reason text NOT NULL, -- 'book_finished', 'review_written', 'quest_completed', etc.
   reference_id uuid, -- book_id, quest_id, achievement_id, etc.
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS achievements (
 -- User achievements (unlocked)
 CREATE TABLE IF NOT EXISTS user_achievements (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   achievement_id text REFERENCES achievements(id) NOT NULL,
   unlocked_at timestamptz DEFAULT now(),
   UNIQUE(user_id, achievement_id)
@@ -86,7 +86,7 @@ CREATE POLICY "Users can unlock achievements"
 
 CREATE TABLE IF NOT EXISTS reading_goals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   type text CHECK (type IN ('yearly_books', 'monthly_books', 'daily_pages', 'daily_minutes')) NOT NULL,
   target integer NOT NULL,
   year integer, -- for yearly goals
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS quests (
 -- User quest progress
 CREATE TABLE IF NOT EXISTS user_quests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   quest_id uuid REFERENCES quests(id) NOT NULL,
   progress integer DEFAULT 0,
   completed boolean DEFAULT false,
@@ -246,10 +246,10 @@ DECLARE
   updated_level integer;
 BEGIN
   -- Get current level
-  SELECT level INTO old_level FROM users WHERE id = p_user_id;
+  SELECT level INTO old_level FROM profiles WHERE id = p_user_id;
   
   -- Update XP and recalculate level
-  UPDATE users 
+  UPDATE profiles 
   SET 
     xp = xp + p_amount,
     level = calculate_level(xp + p_amount)
