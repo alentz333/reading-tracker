@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Book } from '@/types/book';
+import { Book, ReadingStatus } from '@/types/book';
 
 interface BookSearchProps {
-  onBookSelect: (book: Book) => void;
+  onBookSelect: (book: Book, status?: ReadingStatus) => void;
   onResults?: (results: Book[]) => void;
 }
 
@@ -55,6 +55,7 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
       }));
       
       setResults(books);
+      onResults?.(books);
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
@@ -77,18 +78,11 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
     }, 300);
   };
 
-  const handleSelect = (book: Book) => {
-    onBookSelect(book);
+  const handleSelect = (book: Book, status: ReadingStatus = 'want-to-read') => {
+    onBookSelect(book, status);
     setQuery('');
     setResults([]);
     setShowResults(false);
-  };
-
-  const handleSwipeMode = () => {
-    if (results.length > 0 && onResults) {
-      onResults(results);
-      setShowResults(false);
-    }
   };
 
   return (
@@ -114,49 +108,59 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
       {/* Results Dropdown */}
       {showResults && results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--color-bg-elevated)] border border-[var(--glass-border)] rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in">
-          {/* Swipe Mode Button */}
-          {onResults && (
-            <button
-              onClick={handleSwipeMode}
-              className="w-full px-4 py-3 flex items-center justify-between bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors border-b border-[var(--glass-border)]"
-            >
-              <span className="text-sm font-medium text-indigo-400">
-                ✨ Swipe through {results.length} results
-              </span>
-              <span className="text-xs text-white/40">→</span>
-            </button>
-          )}
-
           {/* Results List */}
-          <div className="max-h-80 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto">
             {results.map((book) => (
-              <button
+              <div
                 key={book.googleBooksId}
-                onClick={() => handleSelect(book)}
-                className="w-full px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors text-left"
+                className="w-full px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors border-b border-[var(--glass-border)] last:border-b-0"
               >
+                {/* Book Cover */}
                 {book.coverUrl ? (
                   <img
                     src={book.coverUrl}
                     alt={book.title}
-                    className="w-10 h-14 object-cover rounded shadow-sm flex-shrink-0"
+                    className="w-12 h-18 object-cover rounded shadow-sm flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-10 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-xs">📖</span>
+                  <div className="w-12 h-18 bg-gradient-to-br from-indigo-500 to-purple-600 rounded flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-sm">📖</span>
                   </div>
                 )}
+                
+                {/* Book Info */}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white text-sm truncate">{book.title}</p>
                   <p className="text-xs text-white/50 truncate">{book.author}</p>
                   {book.publishedDate && (
                     <p className="text-xs text-white/30 mt-0.5">
-                      {book.publishedDate.split('-')[0]}
+                      {book.publishedDate.split('-')[0]} {book.pageCount ? `• ${book.pageCount} pages` : ''}
                     </p>
                   )}
+                  
+                  {/* Quick Add Buttons */}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => handleSelect(book, 'want-to-read')}
+                      className="px-2 py-1 text-xs rounded-md bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors"
+                    >
+                      📚 Want to Read
+                    </button>
+                    <button
+                      onClick={() => handleSelect(book, 'reading')}
+                      className="px-2 py-1 text-xs rounded-md bg-pink-500/15 text-pink-400 hover:bg-pink-500/25 transition-colors"
+                    >
+                      📖 Reading
+                    </button>
+                    <button
+                      onClick={() => handleSelect(book, 'read')}
+                      className="px-2 py-1 text-xs rounded-md bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-colors"
+                    >
+                      ✅ Read
+                    </button>
+                  </div>
                 </div>
-                <span className="text-xs text-indigo-400 flex-shrink-0">+ Add</span>
-              </button>
+              </div>
             ))}
           </div>
         </div>

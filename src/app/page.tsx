@@ -4,16 +4,17 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
+import { useGamification } from '@/hooks/useGamification';
 import Header from '@/components/Header';
 import BookSearch from '@/components/BookSearch';
-import { SwipeStack } from '@/components/SwipeCard';
+import { XPBar, LevelBadge, StreakDisplay } from '@/components/gamification';
 
-type ViewMode = 'library' | 'discover';
+type ViewMode = 'library' | 'quests';
 
 export default function Home() {
   const { books, loading, stats, addBook, updateBook, deleteBook, isAuthenticated } = useBooks();
+  const { stats: gameStats, userQuests, onBookStarted, onBookFinished, loading: gameLoading } = useGamification();
   const [viewMode, setViewMode] = useState<ViewMode>('library');
-  const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [showSearch, setShowSearch] = useState(false);
 
   const currentlyReading = books.filter(b => b.status === 'reading');
@@ -25,14 +26,17 @@ export default function Home() {
     if (status === 'reading') {
       bookToAdd.dateStarted = new Date().toISOString().split('T')[0];
     }
-    await addBook(bookToAdd);
+    const success = await addBook(bookToAdd);
+    
+    // Award XP for starting a book
+    if (success && status === 'reading') {
+      await onBookStarted(book.id);
+    }
   };
 
   const handleSearchResults = (results: Book[]) => {
-    setSearchResults(results.filter(r => !books.find(b => b.googleBooksId === r.googleBooksId)));
-    if (results.length > 0) {
-      setViewMode('discover');
-    }
+    // No longer switching to discover mode - just show search results in a modal or panel
+    setShowSearch(true);
   };
 
   if (loading) {
@@ -58,13 +62,10 @@ export default function Home() {
               📚 Library
             </button>
             <button 
-              className={`tab ${viewMode === 'discover' ? 'active' : ''}`}
-              onClick={() => {
-                setViewMode('discover');
-                setShowSearch(true); // Auto-show search in discover mode
-              }}
+              className={`tab ${viewMode === 'quests' ? 'active' : ''}`}
+              onClick={() => setViewMode('quests')}
             >
-              ✨ Discover
+              📜 Quests
             </button>
           </div>
           
@@ -76,8 +77,8 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Search Panel - always show in discover mode with no results, or when toggled */}
-        {(showSearch || (viewMode === 'discover' && searchResults.length === 0)) && (
+        {/* Search Panel */}
+        {showSearch && (
           <div className="bento-card mb-6 animate-fade-in">
             <BookSearch onBookSelect={handleAddBook} onResults={handleSearchResults} />
           </div>
@@ -86,7 +87,35 @@ export default function Home() {
         {viewMode === 'library' ? (
           /* Bento Grid Library View */
           <div className="bento-grid">
-            {/* Stats Cards */}
+            {/* Gamification Stats Row */}
+            {isAuthenticated && gameStats && (
+              <>
+                <div className="bento-card span-2">
+                  <div className="flex items-center gap-4">
+                    <LevelBadge level={gameStats.level} size="lg" />
+                    <div className="flex-1">
+                      <XPBar xp={gameStats.xp} level={gameStats.level} size="md" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bento-card span-1">
+                  <div className="flex items-center justify-center gap-2">
+                    <StreakDisplay streak={gameStats.currentStreak} size="lg" />
+                  </div>
+                  <div className="stat-label text-center mt-2">Day Streak</div>
+                </div>
+                
+                <div className="bento-card span-1">
+                  <Link href="/quests" className="block text-center hover:scale-105 transition-transform">
+                    <div className="stat-value">{userQuests.filter(q => !q.completed).length}</div>
+                    <div className="stat-label">Active Quests</div>
+                  </Link>
+                </div>
+              </>
+            )}
+
+            {/* Stats Cards (for non-authenticated or additional stats) */}
             <div className="bento-card span-1">
               <div className="stat-value">{stats.totalBooks}</div>
               <div className="stat-label">Books Read</div>
@@ -97,13 +126,15 @@ export default function Home() {
               <div className="stat-label">Reading</div>
             </div>
             
-            <div className="bento-card span-1">
-              <div className="flex items-center gap-2">
-                <span className="streak-fire">🔥</span>
-                <div className="stat-value">{stats.streak || 0}</div>
+            {!isAuthenticated && (
+              <div className="bento-card span-1">
+                <div className="flex items-center gap-2">
+                  <span className="streak-fire">🔥</span>
+                  <div className="stat-value">{stats.streak || 0}</div>
+                </div>
+                <div className="stat-label">Day Streak</div>
               </div>
-              <div className="stat-label">Day Streak</div>
-            </div>
+            )}
             
             <div className="bento-card span-1">
               <div className="stat-value">{stats.wantToRead}</div>
@@ -157,7 +188,7 @@ export default function Home() {
               </h2>
               <button 
                 className="btn btn-primary w-full"
-                onClick={() => { setShowSearch(true); setViewMode('discover'); }}
+                onClick={() => setShowSearch(true)}
               >
                 🔍 Search Books
               </button>
@@ -241,7 +272,7 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="empty-state py-6">
-                  <div className="empty-state-description">Swipe to discover books!</div>
+                  <div className="empty-state-description">Search for books to add!</div>
                 </div>
               )}
             </div>
@@ -264,32 +295,74 @@ export default function Home() {
             )}
           </div>
         ) : (
-          /* Discover / Swipe View */
+          /* Quests View */
           <div className="animate-slide-up">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-white mb-2">Discover Books</h2>
-              <p className="text-white/50 text-sm">Swipe left to save, right to skip, up for reading now</p>
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-white mb-2">📜 Daily Quests</h2>
+              <p className="text-white/50">Complete quests to earn XP and level up!</p>
             </div>
-            
-            {searchResults.length > 0 ? (
-              <SwipeStack 
-                books={searchResults}
-                onAddBook={handleAddBook}
-                onSkip={() => {}}
-              />
+
+            {!isAuthenticated ? (
+              <div className="bento-card text-center py-12">
+                <div className="text-4xl mb-4">🔒</div>
+                <h3 className="text-lg font-semibold text-white mb-2">Sign in to track quests</h3>
+                <p className="text-white/50 mb-4">Create an account to earn XP, complete quests, and unlock achievements!</p>
+                <Link href="/auth/signup" className="btn btn-primary">
+                  Get Started
+                </Link>
+              </div>
+            ) : gameLoading ? (
+              <div className="text-center py-12">
+                <div className="text-white/60">Loading quests...</div>
+              </div>
+            ) : userQuests.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {userQuests.map(uq => (
+                  <div key={uq.id} className="bento-card">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          uq.quest?.type === 'daily' ? 'bg-green-500/20 text-green-400' :
+                          uq.quest?.type === 'weekly' ? 'bg-blue-500/20 text-blue-400' :
+                          'bg-purple-500/20 text-purple-400'
+                        }`}>
+                          {uq.quest?.type}
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold text-indigo-400">
+                        +{uq.quest?.xpReward} XP
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-white mb-1">{uq.quest?.name}</h3>
+                    <p className="text-sm text-white/50 mb-3">{uq.quest?.description}</p>
+                    <div className="reading-progress">
+                      <div 
+                        className="reading-progress-bar"
+                        style={{ 
+                          width: `${Math.min(100, (uq.progress / (uq.quest?.requirement?.count || 1)) * 100)}%` 
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-white/40 mt-1">
+                      {uq.progress} / {uq.quest?.requirement?.count || 1}
+                    </p>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="empty-state py-12">
-                <div className="empty-state-icon">🔍</div>
-                <div className="empty-state-title">Search for books</div>
-                <div className="empty-state-description">
-                  Find your next read by searching above
-                </div>
-                <button 
-                  className="btn btn-primary mt-4"
-                  onClick={() => setShowSearch(true)}
-                >
-                  Start Searching
-                </button>
+              <div className="bento-card text-center py-12">
+                <div className="text-4xl mb-4">✨</div>
+                <h3 className="text-lg font-semibold text-white mb-2">No active quests</h3>
+                <p className="text-white/50">Check back tomorrow for new daily quests!</p>
+              </div>
+            )}
+
+            {/* Link to full quests page */}
+            {isAuthenticated && (
+              <div className="text-center mt-6">
+                <Link href="/quests" className="text-indigo-400 hover:underline">
+                  View all quests →
+                </Link>
               </div>
             )}
           </div>
