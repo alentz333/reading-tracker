@@ -79,7 +79,7 @@ export default function Home() {
 
         {/* Search Panel */}
         {showSearch && (
-          <div className="bento-card mb-6 animate-fade-in !overflow-visible">
+          <div className="bento-card mb-6 animate-fade-in !overflow-visible relative z-50">
             <BookSearch onBookSelect={handleAddBook} onResults={handleSearchResults} />
           </div>
         )}
@@ -213,27 +213,20 @@ export default function Home() {
                 </Link>
               </div>
               {recentlyRead.length > 0 ? (
-                <div className="flex gap-3 overflow-x-auto pb-2">
+                <div className="flex gap-4 overflow-x-auto pb-2">
                   {recentlyRead.map(book => (
-                    <div key={book.id} className="flex-shrink-0 w-24 group cursor-pointer">
+                    <div key={book.id} className="flex-shrink-0 w-20 text-center">
                       {book.coverUrl ? (
                         <img 
                           src={book.coverUrl} 
                           alt={book.title}
-                          className="book-cover w-full"
+                          className="w-20 h-28 object-cover rounded-lg shadow-md"
                         />
                       ) : (
-                        <div className="book-cover-placeholder w-full">📖</div>
+                        <div className="w-20 h-28 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-2xl">📖</div>
                       )}
-                      <div className="mt-2 flex justify-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map(star => (
-                          <span 
-                            key={star} 
-                            className={`text-[10px] ${star <= (book.rating || 0) ? '' : 'opacity-30 grayscale'}`}
-                          >
-                            ⭐
-                          </span>
-                        ))}
+                      <div className="mt-1 text-[10px] leading-none">
+                        {'★'.repeat(book.rating || 0)}{'☆'.repeat(5 - (book.rating || 0))}
                       </div>
                     </div>
                   ))}
