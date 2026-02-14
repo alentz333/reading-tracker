@@ -79,7 +79,7 @@ export default function Home() {
 
         {/* Search Panel */}
         {showSearch && (
-          <div className="bento-card mb-6 animate-fade-in">
+          <div className="bento-card mb-6 animate-fade-in !overflow-visible">
             <BookSearch onBookSelect={handleAddBook} onResults={handleSearchResults} />
           </div>
         )}
