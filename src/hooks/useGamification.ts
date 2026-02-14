@@ -18,6 +18,7 @@ import {
   fetchReadingGoals,
   fetchActiveQuests,
   fetchUserQuests,
+  assignQuestsToUser,
   XP_AMOUNTS,
 } from '@/lib/supabase/gamification'
 
@@ -62,6 +63,10 @@ export function useGamification() {
     setState(prev => ({ ...prev, loading: true }))
 
     try {
+      // First, assign any new quests to the user
+      await assignQuestsToUser()
+      
+      // Then fetch all data
       const [stats, achievements, userAchievements, quests, userQuests, goals] = await Promise.all([
         fetchUserStats(),
         fetchAllAchievements(),

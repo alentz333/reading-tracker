@@ -489,6 +489,76 @@ export async function fetchActiveQuests(): Promise<Quest[]> {
   }))
 }
 
+export async function assignQuestsToUser(): Promise<number> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return 0
+
+  // Get all active quests
+  const { data: quests } = await supabase
+    .from('quests')
+    .select('id, type')
+    .eq('is_active', true)
+
+  if (!quests || quests.length === 0) return 0
+
+  // Get user's existing quest assignments
+  const { data: existingAssignments } = await supabase
+    .from('user_quests')
+    .select('quest_id, assigned_at')
+    .eq('user_id', user.id)
+
+  const existingQuestIds = new Set(existingAssignments?.map(a => a.quest_id) || [])
+  
+  const now = new Date()
+  const today = now.toISOString().split('T')[0]
+  
+  // Calculate expiry dates
+  const getExpiresAt = (type: string): string => {
+    const expiry = new Date(now)
+    if (type === 'daily') {
+      expiry.setDate(expiry.getDate() + 1)
+      expiry.setHours(0, 0, 0, 0)
+    } else if (type === 'weekly') {
+      expiry.setDate(expiry.getDate() + (7 - expiry.getDay()))
+      expiry.setHours(23, 59, 59, 999)
+    } else if (type === 'monthly') {
+      expiry.setMonth(expiry.getMonth() + 1, 1)
+      expiry.setHours(0, 0, 0, 0)
+    } else {
+      expiry.setDate(expiry.getDate() + 30) // event quests
+    }
+    return expiry.toISOString()
+  }
+
+  // Find quests to assign (ones not already assigned)
+  const questsToAssign = quests
+    .filter(q => !existingQuestIds.has(q.id))
+    .map(q => ({
+      user_id: user.id,
+      quest_id: q.id,
+      progress: 0,
+      completed: false,
+      assigned_at: now.toISOString(),
+      expires_at: getExpiresAt(q.type),
+    }))
+
+  if (questsToAssign.length === 0) return 0
+
+  // Insert new assignments
+  const { error } = await supabase
+    .from('user_quests')
+    .insert(questsToAssign)
+
+  if (error) {
+    console.error('Error assigning quests:', error)
+    return 0
+  }
+
+  return questsToAssign.length
+}
+
 export async function fetchUserQuests(): Promise<UserQuest[]> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
