@@ -14,6 +14,9 @@ export default function Home() {
   const [showSearch, setShowSearch] = useState(false);
   const [finishingBook, setFinishingBook] = useState<string | null>(null);
   const [pendingRating, setPendingRating] = useState<number>(0);
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [editRating, setEditRating] = useState<number>(0);
+  const [editReview, setEditReview] = useState<string>('');
 
   const currentlyReading = books.filter(b => b.status === 'reading');
   const recentlyRead = books.filter(b => b.status === 'read').slice(0, 6);
@@ -60,6 +63,29 @@ export default function Home() {
     updateBook(bookId, { status: 'want-to-read', progress: 0 });
   };
 
+  const openEditBook = (book: Book) => {
+    setEditingBook(book);
+    setEditRating(book.rating || 0);
+    setEditReview(book.review || '');
+  };
+
+  const saveEditBook = async () => {
+    if (!editingBook) return;
+    await updateBook(editingBook.id, {
+      rating: editRating || undefined,
+      review: editReview || undefined,
+    });
+    setEditingBook(null);
+    setEditRating(0);
+    setEditReview('');
+  };
+
+  const closeEditBook = () => {
+    setEditingBook(null);
+    setEditRating(0);
+    setEditReview('');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -71,6 +97,85 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0a0a0b]">
       <Header stats={stats} />
+      
+      {/* Edit Book Modal */}
+      {editingBook && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a1b] rounded-2xl max-w-md w-full p-6 border border-white/10">
+            <div className="flex gap-4 mb-6">
+              {editingBook.coverUrl ? (
+                <img 
+                  src={editingBook.coverUrl} 
+                  alt={editingBook.title}
+                  className="w-20 h-28 object-cover rounded-lg shadow-lg"
+                />
+              ) : (
+                <div className="w-20 h-28 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-2xl">📖</div>
+              )}
+              <div>
+                <h3 className="font-semibold text-white text-lg">{editingBook.title}</h3>
+                <p className="text-sm text-white/50">{editingBook.author}</p>
+                {editingBook.dateFinished && (
+                  <p className="text-xs text-white/30 mt-1">Finished {editingBook.dateFinished}</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Rating */}
+            <div className="mb-4">
+              <label className="text-sm text-white/60 block mb-2">Your Rating</label>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    onClick={() => setEditRating(star)}
+                    className={`text-3xl transition-transform hover:scale-110 ${
+                      star <= editRating ? 'text-yellow-400' : 'text-white/20'
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+                {editRating > 0 && (
+                  <button 
+                    onClick={() => setEditRating(0)}
+                    className="ml-3 text-xs text-white/40 hover:text-white/60"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Review */}
+            <div className="mb-6">
+              <label className="text-sm text-white/60 block mb-2">Your Review</label>
+              <textarea
+                value={editReview}
+                onChange={(e) => setEditReview(e.target.value)}
+                placeholder="What did you think of this book?"
+                className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={saveEditBook}
+                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={closeEditBook}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Stats Bar */}
@@ -237,16 +342,25 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
               {recentlyRead.map(book => (
-                <div key={book.id} className="group">
-                  {book.coverUrl ? (
-                    <img 
-                      src={book.coverUrl} 
-                      alt={book.title}
-                      className="w-full aspect-[2/3] object-cover rounded-lg shadow-lg group-hover:shadow-xl transition-shadow"
-                    />
-                  ) : (
-                    <div className="w-full aspect-[2/3] bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-3xl">📖</div>
-                  )}
+                <div 
+                  key={book.id} 
+                  className="group cursor-pointer"
+                  onClick={() => openEditBook(book)}
+                >
+                  <div className="relative">
+                    {book.coverUrl ? (
+                      <img 
+                        src={book.coverUrl} 
+                        alt={book.title}
+                        className="w-full aspect-[2/3] object-cover rounded-lg shadow-lg group-hover:shadow-xl group-hover:ring-2 group-hover:ring-indigo-500 transition-all"
+                      />
+                    ) : (
+                      <div className="w-full aspect-[2/3] bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-3xl group-hover:ring-2 group-hover:ring-indigo-500 transition-all">📖</div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 rounded-lg flex items-center justify-center transition-all">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">Edit</span>
+                    </div>
+                  </div>
                   <div className="mt-2 text-center text-sm text-yellow-400">
                     {'★'.repeat(book.rating || 0)}
                     <span className="text-white/20">{'★'.repeat(5 - (book.rating || 0))}</span>
