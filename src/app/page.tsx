@@ -12,6 +12,8 @@ export default function Home() {
   const { books, loading, stats, addBook, updateBook, deleteBook, isAuthenticated } = useBooks();
   const { stats: gameStats, userQuests, onBookStarted, onBookFinished, loading: gameLoading } = useGamification();
   const [showSearch, setShowSearch] = useState(false);
+  const [finishingBook, setFinishingBook] = useState<string | null>(null);
+  const [pendingRating, setPendingRating] = useState<number>(0);
 
   const currentlyReading = books.filter(b => b.status === 'reading');
   const recentlyRead = books.filter(b => b.status === 'read').slice(0, 6);
@@ -31,6 +33,31 @@ export default function Home() {
     if (success) {
       setShowSearch(false);
     }
+  };
+
+  const handleProgressChange = (bookId: string, progress: number) => {
+    updateBook(bookId, { progress });
+  };
+
+  const handleMarkAsRead = (bookId: string) => {
+    setFinishingBook(bookId);
+    setPendingRating(0);
+  };
+
+  const confirmFinishBook = async (bookId: string) => {
+    await updateBook(bookId, { 
+      status: 'read', 
+      progress: 100,
+      rating: pendingRating || undefined,
+      dateFinished: new Date().toISOString().split('T')[0]
+    });
+    await onBookFinished(bookId);
+    setFinishingBook(null);
+    setPendingRating(0);
+  };
+
+  const handleStopReading = (bookId: string) => {
+    updateBook(bookId, { status: 'want-to-read', progress: 0 });
   };
 
   if (loading) {
@@ -70,12 +97,6 @@ export default function Home() {
               <div className="text-2xl font-bold text-white">{stats.wantToRead}</div>
               <div className="text-xs text-white/50">Want to Read</div>
             </div>
-            {gameStats && gameStats.currentStreak > 0 && (
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-400">🔥 {gameStats.currentStreak}</div>
-                <div className="text-xs text-white/50">Day Streak</div>
-              </div>
-            )}
           </div>
           <button 
             onClick={() => setShowSearch(!showSearch)}
@@ -109,29 +130,94 @@ export default function Home() {
             </h2>
             <div className="space-y-4">
               {currentlyReading.map(book => (
-                <div key={book.id} className="flex gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
-                  {book.coverUrl ? (
-                    <img 
-                      src={book.coverUrl} 
-                      alt={book.title}
-                      className="w-16 h-24 object-cover rounded-lg shadow-lg"
-                    />
-                  ) : (
-                    <div className="w-16 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-2xl">📖</div>
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white">{book.title}</h3>
-                    <p className="text-sm text-white/50">{book.author}</p>
-                    <div className="mt-3">
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
-                          style={{ width: `${book.progress || 0}%` }}
-                        />
+                <div key={book.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="flex gap-4">
+                    {book.coverUrl ? (
+                      <img 
+                        src={book.coverUrl} 
+                        alt={book.title}
+                        className="w-16 h-24 object-cover rounded-lg shadow-lg"
+                      />
+                    ) : (
+                      <div className="w-16 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-2xl">📖</div>
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-white">{book.title}</h3>
+                      <p className="text-sm text-white/50">{book.author}</p>
+                      
+                      {/* Progress Section */}
+                      <div className="mt-3">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={book.progress || 0}
+                            onChange={(e) => handleProgressChange(book.id, parseInt(e.target.value))}
+                            className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                          />
+                          <span className="text-sm text-white/60 w-12 text-right">{book.progress || 0}%</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-white/40 mt-1">{book.progress || 0}% complete</p>
                     </div>
                   </div>
+                  
+                  {/* Action Buttons */}
+                  {finishingBook === book.id ? (
+                    <div className="mt-4 p-3 bg-white/5 rounded-lg">
+                      <p className="text-sm text-white/70 mb-2">Rate this book:</p>
+                      <div className="flex items-center gap-1 mb-3">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            key={star}
+                            onClick={() => setPendingRating(star)}
+                            className={`text-2xl transition-transform hover:scale-110 ${
+                              star <= pendingRating ? 'text-yellow-400' : 'text-white/20'
+                            }`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                        {pendingRating > 0 && (
+                          <button 
+                            onClick={() => setPendingRating(0)}
+                            className="ml-2 text-xs text-white/40 hover:text-white/60"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => confirmFinishBook(book.id)}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          ✓ Confirm Finished
+                        </button>
+                        <button
+                          onClick={() => setFinishingBook(null)}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg text-sm transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => handleMarkAsRead(book.id)}
+                        className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg text-sm transition-colors"
+                      >
+                        ✓ Mark as Read
+                      </button>
+                      <button
+                        onClick={() => handleStopReading(book.id)}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg text-sm transition-colors"
+                      >
+                        ✕ Stop Reading
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -236,12 +322,6 @@ export default function Home() {
                 className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg transition-colors"
               >
                 👥 Book Clubs
-              </Link>
-              <Link 
-                href="/quests" 
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg transition-colors"
-              >
-                📜 Quests
               </Link>
             </div>
           </section>
