@@ -7,6 +7,7 @@ export interface Book {
   coverUrl?: string;
   isbn?: string;
   googleBooksId?: string;
+  olKey?: string;
   pageCount?: number;
   publishedYear?: number;
   publishedDate?: string;
