@@ -225,14 +225,15 @@ export default function Home() {
                       ) : (
                         <div className="book-cover-placeholder w-full">📖</div>
                       )}
-                      <div className="mt-2">
-                        <div className="star-rating justify-center">
-                          {[1, 2, 3, 4, 5].map(star => (
-                            <span key={star} className={`star text-xs ${star <= (book.rating || 0) ? 'filled' : ''}`}>
-                              ⭐
-                            </span>
-                          ))}
-                        </div>
+                      <div className="mt-2 flex justify-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <span 
+                            key={star} 
+                            className={`text-[10px] ${star <= (book.rating || 0) ? '' : 'opacity-30 grayscale'}`}
+                          >
+                            ⭐
+                          </span>
+                        ))}
                       </div>
                     </div>
                   ))}

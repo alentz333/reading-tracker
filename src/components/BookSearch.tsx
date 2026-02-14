@@ -35,21 +35,24 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=10`
-      );
+      // Use local API route (Open Library) as primary, fallback to Google Books
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      
+      if (!response.ok) {
+        throw new Error('Search API error');
+      }
+      
       const data = await response.json();
       
-      const books: Book[] = (data.items || []).map((item: any) => ({
-        id: `temp-${item.id}`,
-        googleBooksId: item.id,
-        title: item.volumeInfo.title,
-        author: item.volumeInfo.authors?.join(', ') || 'Unknown Author',
-        coverUrl: item.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'),
-        pageCount: item.volumeInfo.pageCount,
-        description: item.volumeInfo.description,
-        isbn: item.volumeInfo.industryIdentifiers?.[0]?.identifier,
-        publishedDate: item.volumeInfo.publishedDate,
+      const books: Book[] = (data.books || []).map((item: any) => ({
+        id: `temp-${item.key || item.isbn || Math.random().toString(36)}`,
+        olKey: item.key,
+        title: item.title,
+        author: item.author || 'Unknown Author',
+        coverUrl: item.coverUrl,
+        pageCount: item.pageCount,
+        isbn: item.isbn,
+        publishedDate: item.publishedYear?.toString(),
         status: 'want-to-read' as const,
         isPublic: true,
       }));
@@ -112,7 +115,7 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
           <div className="max-h-96 overflow-y-auto">
             {results.map((book) => (
               <div
-                key={book.googleBooksId}
+                key={book.olKey || book.id}
                 className="w-full px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors border-b border-[var(--glass-border)] last:border-b-0"
               >
                 {/* Book Cover */}
