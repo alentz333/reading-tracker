@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
@@ -17,6 +17,7 @@ export default function Home() {
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [editRating, setEditRating] = useState<number>(0);
   const [editReview, setEditReview] = useState<string>('');
+  const [localProgress, setLocalProgress] = useState<Record<string, number>>({});
 
   const currentlyReading = books.filter(b => b.status === 'reading');
   const recentlyRead = books.filter(b => b.status === 'read').slice(0, 6);
@@ -39,7 +40,19 @@ export default function Home() {
   };
 
   const handleProgressChange = (bookId: string, progress: number) => {
-    updateBook(bookId, { progress });
+    // Update local state immediately for smooth UI
+    setLocalProgress(prev => ({ ...prev, [bookId]: progress }));
+  };
+
+  const saveProgress = (bookId: string) => {
+    const progress = localProgress[bookId];
+    if (progress !== undefined) {
+      updateBook(bookId, { progress });
+    }
+  };
+
+  const getProgress = (book: Book) => {
+    return localProgress[book.id] ?? book.progress ?? 0;
   };
 
   const handleMarkAsRead = (bookId: string) => {
@@ -257,11 +270,13 @@ export default function Home() {
                             type="range"
                             min="0"
                             max="100"
-                            value={book.progress || 0}
+                            value={getProgress(book)}
                             onChange={(e) => handleProgressChange(book.id, parseInt(e.target.value))}
+                            onMouseUp={() => saveProgress(book.id)}
+                            onTouchEnd={() => saveProgress(book.id)}
                             className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                           />
-                          <span className="text-sm text-white/60 w-12 text-right">{book.progress || 0}%</span>
+                          <span className="text-sm text-white/60 w-12 text-right">{getProgress(book)}%</span>
                         </div>
                       </div>
                     </div>

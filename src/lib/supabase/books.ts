@@ -59,6 +59,7 @@ function mapSupabaseToBook(sb: SupabaseBook): Book {
     publishedYear: sb.books.published_date ? parseInt(sb.books.published_date) : undefined,
     status: mapStatusFromDb(sb.status),
     rating: sb.rating || undefined,
+    progress: sb.current_page || undefined, // current_page stores progress percentage (0-100)
     dateStarted: sb.started_at || undefined,
     dateFinished: sb.finished_at || undefined,
     review: sb.review || undefined,
@@ -222,6 +223,7 @@ export async function updateBookInSupabase(id: string, updates: Partial<Book>): 
   if (updates.status) dbUpdates.status = mapStatusToDb(updates.status)
   if (updates.rating !== undefined) dbUpdates.rating = updates.rating
   if (updates.review !== undefined) dbUpdates.review = updates.review
+  if (updates.progress !== undefined) dbUpdates.current_page = updates.progress // using current_page for progress %
   if (updates.dateStarted !== undefined) dbUpdates.started_at = updates.dateStarted
   if (updates.dateFinished !== undefined) dbUpdates.finished_at = updates.dateFinished
   if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
