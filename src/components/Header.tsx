@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useGamification } from '@/hooks/useGamification';
 import { LevelBadge, XPBar, StreakDisplay, XPPopup } from '@/components/gamification';
@@ -20,6 +21,7 @@ export default function Header({ stats }: HeaderProps) {
   const { stats: gameStats, recentXP, loading: gameLoading } = useGamification();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -196,6 +198,51 @@ export default function Header({ stats }: HeaderProps) {
           </div>
         </div>
       </header>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0b]/95 backdrop-blur-xl border-t border-white/10 pb-safe">
+        <div className="flex items-center justify-around py-2">
+          <Link 
+            href="/" 
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+              pathname === '/' ? 'text-indigo-400' : 'text-white/50'
+            }`}
+          >
+            <span className="text-xl">📚</span>
+            <span className="text-xs">Library</span>
+          </Link>
+          <Link 
+            href="/quests" 
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+              pathname === '/quests' ? 'text-indigo-400' : 'text-white/50'
+            }`}
+          >
+            <span className="text-xl">📜</span>
+            <span className="text-xs">Quests</span>
+          </Link>
+          <Link 
+            href="/clubs" 
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+              pathname === '/clubs' || pathname?.startsWith('/clubs/') ? 'text-indigo-400' : 'text-white/50'
+            }`}
+          >
+            <span className="text-xl">👥</span>
+            <span className="text-xs">Clubs</span>
+          </Link>
+          <Link 
+            href="/achievements" 
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+              pathname === '/achievements' ? 'text-indigo-400' : 'text-white/50'
+            }`}
+          >
+            <span className="text-xl">🏆</span>
+            <span className="text-xs">Awards</span>
+          </Link>
+        </div>
+      </nav>
+      
+      {/* Spacer for mobile bottom nav */}
+      <div className="md:hidden h-20" />
     </>
   );
 }
