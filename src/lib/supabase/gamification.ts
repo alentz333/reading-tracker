@@ -328,6 +328,134 @@ export async function unlockAchievement(achievementId: string): Promise<boolean>
   return true
 }
 
+function meetsRequirement(requirement: Record<string, any>, progress: Record<string, any>): boolean {
+  if (typeof requirement.books_read === 'number') {
+    if ((progress.booksRead || 0) < requirement.books_read) return false
+  }
+
+  if (typeof requirement.streak === 'number') {
+    if ((progress.streak || 0) < requirement.streak) return false
+  }
+
+  if (typeof requirement.reviews === 'number') {
+    if ((progress.reviews || 0) < requirement.reviews) return false
+  }
+
+  if (typeof requirement.ratings === 'number') {
+    if ((progress.ratings || 0) < requirement.ratings) return false
+  }
+
+  if (typeof requirement.clubs_joined === 'number') {
+    if ((progress.clubsJoined || 0) < requirement.clubs_joined) return false
+  }
+
+  if (typeof requirement.clubs_created === 'number') {
+    if ((progress.clubsCreated || 0) < requirement.clubs_created) return false
+  }
+
+  if (typeof requirement.days_to_finish === 'number') {
+    if (!progress.fastFinish) return false
+  }
+
+  if (typeof requirement.pages === 'number') {
+    if ((progress.maxPagesFinished || 0) < requirement.pages) return false
+  }
+
+  if (requirement.early_reading === true) {
+    if (!progress.earlyReading) return false
+  }
+
+  if (requirement.late_reading === true) {
+    if (!progress.lateReading) return false
+  }
+
+  return true
+}
+
+export async function checkAndUnlockAchievements(): Promise<string[]> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return []
+
+  const [
+    achievementsRes,
+    unlockedRes,
+    profileRes,
+    booksRes,
+    clubsJoinedRes,
+    clubsCreatedRes,
+    xpEventsRes,
+  ] = await Promise.all([
+    supabase.from('achievements').select('id, requirement').order('sort_order', { ascending: true }),
+    supabase.from('user_achievements').select('achievement_id').eq('user_id', user.id),
+    supabase.from('profiles').select('current_streak').eq('id', user.id).single(),
+    supabase.from('user_books').select('status, rating, review, started_at, finished_at, books(page_count)').eq('user_id', user.id),
+    supabase.from('club_members').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('clubs').select('id', { count: 'exact', head: true }).eq('created_by', user.id),
+    supabase.from('xp_events').select('created_at, reason').eq('user_id', user.id),
+  ])
+
+  const achievements = achievementsRes.data || []
+  const unlockedIds = new Set((unlockedRes.data || []).map((a: any) => a.achievement_id))
+  const books = booksRes.data || []
+
+  const booksRead = books.filter((b: any) => b.status === 'read').length
+  const reviews = books.filter((b: any) => !!b.review && String(b.review).trim().length > 0).length
+  const ratings = books.filter((b: any) => typeof b.rating === 'number').length
+  const streak = profileRes.data?.current_streak || 0
+  const clubsJoined = clubsJoinedRes.count || 0
+  const clubsCreated = clubsCreatedRes.count || 0
+
+  const finishedBooks = books.filter((b: any) => b.status === 'read' && b.finished_at)
+  const maxPagesFinished = finishedBooks.reduce((max: number, b: any) => {
+    const pages = b.books?.page_count || 0
+    return pages > max ? pages : max
+  }, 0)
+
+  const fastFinish = books.some((b: any) => {
+    if (!b.started_at || !b.finished_at) return false
+    const start = new Date(b.started_at)
+    const finish = new Date(b.finished_at)
+    const days = Math.floor((finish.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    return days >= 0 && days <= 3
+  })
+
+  const eventDates = (xpEventsRes.data || []).map((e: any) => new Date(e.created_at))
+  const earlyReading = eventDates.some((d: Date) => d.getHours() < 7)
+  const lateReading = eventDates.some((d: Date) => d.getHours() >= 0 && d.getHours() < 5)
+
+  const progress = {
+    booksRead,
+    reviews,
+    ratings,
+    streak,
+    clubsJoined,
+    clubsCreated,
+    maxPagesFinished,
+    fastFinish,
+    earlyReading,
+    lateReading,
+  }
+
+  const newlyUnlocked: string[] = []
+
+  for (const ach of achievements as any[]) {
+    if (unlockedIds.has(ach.id)) continue
+    if (!ach.requirement || typeof ach.requirement !== 'object') continue
+
+    if (meetsRequirement(ach.requirement, progress)) {
+      const ok = await unlockAchievement(ach.id)
+      if (ok) {
+        newlyUnlocked.push(ach.id)
+        unlockedIds.add(ach.id)
+      }
+    }
+  }
+
+  return newlyUnlocked
+}
+
 // ============================================
 // Streaks
 // ============================================

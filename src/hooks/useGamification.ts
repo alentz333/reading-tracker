@@ -13,7 +13,7 @@ import {
   awardXP,
   fetchAllAchievements,
   fetchUserAchievements,
-  unlockAchievement,
+  checkAndUnlockAchievements,
   updateStreak,
   fetchReadingGoals,
   fetchActiveQuests,
@@ -158,12 +158,12 @@ export function useGamification() {
   const onReadingLogged = useCallback(async () => {
     await gainXP(XP_AMOUNTS.LOG_READING, 'Logged reading')
     await updateStreak()
+    await checkAchievements()
   }, [gainXP])
 
   // Check and unlock achievements
   const checkAchievements = useCallback(async () => {
-    // This would ideally be done server-side, but for MVP we can check client-side
-    // Re-fetch user achievements after any action
+    await checkAndUnlockAchievements()
     const newUserAchievements = await fetchUserAchievements()
     setState(prev => ({ ...prev, userAchievements: newUserAchievements }))
   }, [])
