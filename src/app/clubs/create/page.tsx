@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/auth/AuthProvider'
 import Link from 'next/link'
+import { awardXP, checkAndUnlockAchievements, XP_AMOUNTS } from '@/lib/supabase/gamification'
 
 function generateJoinCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -70,6 +71,10 @@ export default function CreateClubPage() {
       setSaving(false)
       return
     }
+
+    // Gamification hooks: award XP and evaluate achievements
+    await awardXP(XP_AMOUNTS.CREATE_CLUB, 'club_created', club.id)
+    await checkAndUnlockAchievements()
 
     router.push(`/clubs/${club.id}`)
   }
