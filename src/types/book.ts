@@ -22,6 +22,7 @@ export interface Book {
   addedAt?: string;
   source?: 'manual' | 'goodreads' | 'openlibrary' | 'google';
   isPublic?: boolean; // Default true - visible on profile
+  isPreviousRead?: boolean; // Imported/added from Previous Reads timeline
 }
 
 export interface OpenLibraryBook {

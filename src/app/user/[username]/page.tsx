@@ -177,14 +177,22 @@ export default function UserProfilePage() {
               </div>
             </div>
             
-            {/* Edit Button */}
+            {/* Profile Actions */}
             {isOwnProfile && (
-              <Link 
-                href="/profile/edit"
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
-              >
-                Edit Profile
-              </Link>
+              <div className="flex gap-2">
+                <a
+                  href={`/api/user/${username}/reading-export`}
+                  className="px-4 py-2 bg-[var(--color-gold)] text-[var(--color-forest)] hover:opacity-90 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Download Reading Data
+                </a>
+                <Link 
+                  href="/profile/edit"
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+                >
+                  Edit Profile
+                </Link>
+              </div>
             )}
           </div>
         </div>

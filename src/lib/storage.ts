@@ -36,39 +36,85 @@ export function deleteBook(id: string): Book[] {
   return books;
 }
 
+export function parseYear(dateValue?: string): number | null {
+  if (!dateValue) return null;
+
+  const yearMatch = dateValue.match(/^(\d{4})/);
+  if (yearMatch) {
+    return Number(yearMatch[1]);
+  }
+
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.getFullYear();
+}
+
+export function isPreviousReadLike(book: Book): boolean {
+  if (book.isPreviousRead) return true;
+
+  // Backward compatibility for earlier imports before isPreviousRead existed.
+  return (
+    book.status === 'read' &&
+    book.source === 'manual' &&
+    (book.author || '').trim().toLowerCase() === 'unknown author'
+  );
+}
+
+export function getBookReadYear(book: Book): number | null {
+  // Primary signal: explicit finish date
+  const finishedYear = parseYear(book.dateFinished);
+  if (finishedYear) return finishedYear;
+
+  // Fallback for older entries created as "read" without a finish date
+  if (book.status === 'read' && !isPreviousReadLike(book)) {
+    return parseYear(book.addedAt);
+  }
+
+  return null;
+}
+
+export function getActiveReadBooks(books: Book[]): Book[] {
+  return books.filter(book => book.status === 'read' && !isPreviousReadLike(book));
+}
+
+export function getActiveReadBooksThisYear(
+  books: Book[],
+  year: number = new Date().getFullYear()
+): Book[] {
+  return getActiveReadBooks(books).filter(book => getBookReadYear(book) === year);
+}
+
 export function calculateStats(books: Book[]): ReadingStats {
   const currentYear = new Date().getFullYear();
-  const readBooks = books.filter(b => b.status === 'read');
-  
-  const booksThisYear = readBooks.filter(b => {
-    if (!b.dateFinished) return false;
-    return new Date(b.dateFinished).getFullYear() === currentYear;
-  });
-  
+  const allReadBooks = books.filter(b => b.status === 'read');
+  const activeReadBooks = getActiveReadBooks(books);
+
+  const booksThisYear = getActiveReadBooksThisYear(books, currentYear);
+
   const pagesThisYear = booksThisYear.reduce((sum, b) => sum + (b.pageCount || 0), 0);
-  
-  const ratedBooks = readBooks.filter(b => b.rating);
+
+  const ratedBooks = activeReadBooks.filter(b => b.rating);
   const averageRating = ratedBooks.length > 0
     ? ratedBooks.reduce((sum, b) => sum + (b.rating || 0), 0) / ratedBooks.length
     : 0;
-  
+
   const byYear: Record<number, number> = {};
-  readBooks.forEach(b => {
-    if (b.dateFinished) {
-      const year = new Date(b.dateFinished).getFullYear();
+  activeReadBooks.forEach(b => {
+    const year = getBookReadYear(b);
+    if (year) {
       byYear[year] = (byYear[year] || 0) + 1;
     }
   });
-  
+
   const byGenre: Record<string, number> = {};
-  readBooks.forEach(b => {
+  activeReadBooks.forEach(b => {
     b.genres?.forEach(g => {
       byGenre[g] = (byGenre[g] || 0) + 1;
     });
   });
-  
+
   return {
-    totalBooks: readBooks.length,
+    totalBooks: allReadBooks.length,
     booksThisYear: booksThisYear.length,
     pagesThisYear,
     averageRating: Math.round(averageRating * 10) / 10,

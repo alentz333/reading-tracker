@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useGamification } from '@/hooks/useGamification';
 import { useAuth } from '@/components/auth/AuthProvider';
 import Header from '@/components/Header';
@@ -21,10 +22,17 @@ export default function AchievementsPage() {
     achievements, 
     userAchievements, 
     isAchievementUnlocked,
+    checkAchievements,
     loading: gameLoading 
   } = useGamification();
 
   const loading = authLoading || gameLoading;
+
+  useEffect(() => {
+    if (user) {
+      checkAchievements();
+    }
+  }, [user, checkAchievements]);
 
   // Group achievements by category
   const groupedAchievements = achievements.reduce((acc, achievement) => {
