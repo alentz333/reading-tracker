@@ -1,5 +1,6 @@
 import { createClient } from './client'
 import { Book, ReadingStatus } from '@/types/book'
+import { PREVIOUS_READ_NOTE_TAG } from '@/lib/previous-reads'
 
 const supabase = createClient()
 
@@ -49,15 +50,22 @@ function mapStatusFromDb(status: string): ReadingStatus {
 }
 
 function mapSupabaseToBook(sb: SupabaseBook): Book {
+  const author = sb.books.author || 'Unknown'
+  const status = mapStatusFromDb(sb.status)
+  const isTaggedPreviousRead = (sb.notes || '').includes(PREVIOUS_READ_NOTE_TAG)
+  const isLegacyPreviousRead =
+    status === 'read' &&
+    author.trim().toLowerCase() === 'unknown author'
+
   return {
     id: sb.id, // user_books id
     title: sb.books.title,
-    author: sb.books.author || 'Unknown',
+    author,
     coverUrl: sb.books.cover_url || undefined,
     isbn: sb.books.isbn || undefined,
     pageCount: sb.books.page_count || undefined,
     publishedYear: sb.books.published_date ? parseInt(sb.books.published_date) : undefined,
-    status: mapStatusFromDb(sb.status),
+    status,
     rating: sb.rating || undefined,
     progress: sb.current_page || undefined, // current_page stores progress percentage (0-100)
     dateStarted: sb.started_at || undefined,
@@ -66,6 +74,7 @@ function mapSupabaseToBook(sb: SupabaseBook): Book {
     addedAt: sb.created_at,
     source: 'manual',
     isPublic: sb.is_public,
+    isPreviousRead: isTaggedPreviousRead || isLegacyPreviousRead,
   }
 }
 
@@ -179,6 +188,7 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
       finished_at: book.dateFinished,
       rating: book.rating,
       review: book.review,
+      notes: book.isPreviousRead ? PREVIOUS_READ_NOTE_TAG : null,
     })
     .select(`
       id,
@@ -219,14 +229,14 @@ export async function updateBookInSupabase(id: string, updates: Partial<Book>): 
   if (!user) return false
 
   const dbUpdates: Record<string, unknown> = {}
-  
-  if (updates.status) dbUpdates.status = mapStatusToDb(updates.status)
-  if (updates.rating !== undefined) dbUpdates.rating = updates.rating
-  if (updates.review !== undefined) dbUpdates.review = updates.review
-  if (updates.progress !== undefined) dbUpdates.current_page = updates.progress // using current_page for progress %
-  if (updates.dateStarted !== undefined) dbUpdates.started_at = updates.dateStarted
-  if (updates.dateFinished !== undefined) dbUpdates.finished_at = updates.dateFinished
-  if (updates.isPublic !== undefined) dbUpdates.is_public = updates.isPublic
+
+  if ('status' in updates && updates.status) dbUpdates.status = mapStatusToDb(updates.status)
+  if ('rating' in updates) dbUpdates.rating = updates.rating ?? null
+  if ('review' in updates) dbUpdates.review = updates.review ?? null
+  if ('progress' in updates) dbUpdates.current_page = updates.progress ?? null // using current_page for progress %
+  if ('dateStarted' in updates) dbUpdates.started_at = updates.dateStarted ?? null
+  if ('dateFinished' in updates) dbUpdates.finished_at = updates.dateFinished ?? null
+  if ('isPublic' in updates) dbUpdates.is_public = updates.isPublic
 
   const { error } = await supabase
     .from('user_books')

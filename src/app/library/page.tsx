@@ -3,10 +3,10 @@
 import { useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
 import BookCard from '@/components/BookCard';
+import { isPreviousReadBook } from '@/lib/previous-reads';
 
 type FilterType = 'all' | 'reading' | 'read' | 'want';
 
@@ -15,12 +15,12 @@ function LibraryContent() {
   const initialFilter = (searchParams.get('filter') as FilterType) || 'all';
   const [filter, setFilter] = useState<FilterType>(initialFilter);
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'author' | 'rating'>('recent');
-  
+
   const { books, loading, stats, updateBook, deleteBook } = useBooks();
 
   const filteredBooks = useMemo(() => {
-    let filtered = [...books];
-    
+    let filtered = books.filter(book => !isPreviousReadBook(book));
+
     // Apply filter
     switch (filter) {
       case 'reading':
@@ -33,7 +33,7 @@ function LibraryContent() {
         filtered = filtered.filter(b => b.status === 'want-to-read');
         break;
     }
-    
+
     // Apply sort
     switch (sortBy) {
       case 'title':
@@ -53,7 +53,7 @@ function LibraryContent() {
           return dateA.localeCompare(dateB);
         });
     }
-    
+
     return filtered;
   }, [books, filter, sortBy]);
 
@@ -75,14 +75,30 @@ function LibraryContent() {
   return (
     <div className="min-h-screen">
       <Header stats={stats} />
-      
+
       <main className="max-w-6xl mx-auto px-4 py-6">
         {/* Back Link */}
         <Link href="/" className="text-white/50 hover:text-white text-sm mb-4 inline-block">
           ← Back to Home
         </Link>
 
-        <h1 className="text-2xl font-bold text-white mb-6">My Library</h1>
+        <h1 className="text-2xl font-bold text-white mb-4">My Library</h1>
+
+        {/* Library Tabs */}
+        <div className="mb-6 flex items-center gap-2 border-b border-white/10 pb-3">
+          <Link
+            href="/library"
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium"
+          >
+            Library
+          </Link>
+          <Link
+            href="/library/previous-reads"
+            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/80 text-sm font-medium transition-colors"
+          >
+            Previous Reads
+          </Link>
+        </div>
 
         {/* Filters & Sort */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -132,7 +148,7 @@ function LibraryContent() {
             <div className="empty-state-icon">📚</div>
             <div className="empty-state-title">No books here yet</div>
             <div className="empty-state-description">
-              {filter === 'all' 
+              {filter === 'all'
                 ? 'Start by searching for books to add to your library'
                 : `No books in "${filterLabels[filter].replace(/📚|📖|✅|💫 /, '')}"`
               }

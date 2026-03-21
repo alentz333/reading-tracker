@@ -1,33 +1,51 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
 import { useGamification } from '@/hooks/useGamification';
 import Header from '@/components/Header';
 import BookSearch from '@/components/BookSearch';
+import { isPreviousReadBook } from '@/lib/previous-reads';
+import { getActiveReadBooksThisYear } from '@/lib/storage';
 
 export default function Home() {
   const { books, loading, stats, addBook, updateBook, deleteBook, isAuthenticated } = useBooks();
-  const { stats: gameStats, userQuests, onBookStarted, onBookFinished, loading: gameLoading } = useGamification();
+  const { onBookStarted, onBookFinished } = useGamification();
   const [showSearch, setShowSearch] = useState(false);
   const [finishingBook, setFinishingBook] = useState<string | null>(null);
   const [pendingRating, setPendingRating] = useState<number>(0);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [editStatus, setEditStatus] = useState<ReadingStatus>('read');
   const [editRating, setEditRating] = useState<number>(0);
   const [editReview, setEditReview] = useState<string>('');
   const [localProgress, setLocalProgress] = useState<Record<string, number>>({});
 
-  const currentlyReading = books.filter(b => b.status === 'reading');
-  const recentlyRead = books.filter(b => b.status === 'read').slice(0, 6);
-  const wantToRead = books.filter(b => b.status === 'want-to-read').slice(0, 8);
+  const activeLibraryBooks = books.filter(book => !isPreviousReadBook(book));
+  const currentlyReading = activeLibraryBooks.filter(b => b.status === 'reading');
+  const recentlyRead = [...getActiveReadBooksThisYear(books)].sort((a, b) => {
+    const dateA = a.dateFinished || a.addedAt || '';
+    const dateB = b.dateFinished || b.addedAt || '';
+    return dateB.localeCompare(dateA);
+  });
+  const wantToRead = activeLibraryBooks.filter(b => b.status === 'want-to-read').slice(0, 8);
 
   const handleAddBook = async (book: Book, status?: ReadingStatus) => {
-    const bookToAdd = { ...book, status: status || book.status };
-    if (status === 'reading') {
-      bookToAdd.dateStarted = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    const nextStatus = status || book.status;
+    const bookToAdd = { ...book, status: nextStatus };
+
+    if (nextStatus === 'reading') {
+      bookToAdd.dateStarted = today;
+      bookToAdd.progress = bookToAdd.progress ?? 0;
     }
+
+    if (nextStatus === 'read') {
+      bookToAdd.dateFinished = bookToAdd.dateFinished || today;
+      bookToAdd.progress = 100;
+    }
+
     const success = await addBook(bookToAdd);
     
     if (success && status === 'reading') {
@@ -78,23 +96,50 @@ export default function Home() {
 
   const openEditBook = (book: Book) => {
     setEditingBook(book);
+    setEditStatus(book.status);
     setEditRating(book.rating || 0);
     setEditReview(book.review || '');
   };
 
   const saveEditBook = async () => {
     if (!editingBook) return;
-    await updateBook(editingBook.id, {
+
+    const today = new Date().toISOString().split('T')[0];
+    const updates: Partial<Book> = {
+      status: editStatus,
       rating: editRating || undefined,
       review: editReview || undefined,
-    });
-    setEditingBook(null);
-    setEditRating(0);
-    setEditReview('');
+    };
+
+    if (editStatus === 'read') {
+      updates.progress = 100;
+      updates.dateFinished = editingBook.dateFinished || today;
+    } else if (editStatus === 'reading') {
+      updates.progress = 0;
+      updates.dateStarted = editingBook.dateStarted || today;
+      updates.dateFinished = undefined;
+    } else {
+      updates.progress = 0;
+      updates.dateFinished = undefined;
+    }
+
+    await updateBook(editingBook.id, updates);
+    closeEditBook();
+  };
+
+  const handleRemoveBook = async () => {
+    if (!editingBook) return;
+
+    const shouldDelete = window.confirm(`Remove "${editingBook.title}" from your library? This cannot be undone.`);
+    if (!shouldDelete) return;
+
+    await deleteBook(editingBook.id);
+    closeEditBook();
   };
 
   const closeEditBook = () => {
     setEditingBook(null);
+    setEditStatus('read');
     setEditRating(0);
     setEditReview('');
   };
@@ -134,6 +179,43 @@ export default function Home() {
               </div>
             </div>
             
+            {/* Status */}
+            <div className="mb-5">
+              <label className="text-sm text-white/60 block mb-2">Status</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setEditStatus('want-to-read')}
+                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                    editStatus === 'want-to-read'
+                      ? 'bg-blue-500/25 text-blue-300 border border-blue-400/40'
+                      : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  📚 Want to Read
+                </button>
+                <button
+                  onClick={() => setEditStatus('reading')}
+                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                    editStatus === 'reading'
+                      ? 'bg-pink-500/25 text-pink-300 border border-pink-400/40'
+                      : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  📖 Reading
+                </button>
+                <button
+                  onClick={() => setEditStatus('read')}
+                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                    editStatus === 'read'
+                      ? 'bg-green-500/25 text-green-300 border border-green-400/40'
+                      : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  ✅ Read
+                </button>
+              </div>
+            </div>
+
             {/* Rating */}
             <div className="mb-4">
               <label className="text-sm text-white/60 block mb-2">Your Rating</label>
@@ -172,18 +254,27 @@ export default function Home() {
             </div>
             
             {/* Actions */}
-            <div className="flex gap-3">
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={saveEditBook}
+                  className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={closeEditBook}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+
               <button
-                onClick={saveEditBook}
-                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+                onClick={handleRemoveBook}
+                className="w-full px-4 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-300 rounded-lg border border-red-400/30 transition-colors"
               >
-                Save Changes
-              </button>
-              <button
-                onClick={closeEditBook}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
-              >
-                Cancel
+                Remove from Library
               </button>
             </div>
           </div>
@@ -192,33 +283,37 @@ export default function Home() {
       
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Stats Bar */}
-        <div className="flex items-center justify-between mb-8 p-4 bg-white/5 rounded-xl border border-white/10">
-          <div className="flex items-center gap-6">
-            {isAuthenticated && gameStats && (
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🏆</span>
-                <div>
-                  <div className="text-sm text-white/50">Level {gameStats.level}</div>
-                  <div className="text-xs text-white/30">{gameStats.xp} XP</div>
-                </div>
+        <div className="mb-8">
+          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{stats.booksThisYear}</div>
+                <div className="text-xs text-white/50">Read This Year</div>
               </div>
-            )}
-            <div className="text-center">
-              <div className="text-2xl font-bold text-white">{stats.totalBooks}</div>
-              <div className="text-xs text-white/50">Books Read</div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{stats.totalBooks}</div>
+                <div className="text-xs text-white/50">Read All Time</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{stats.currentlyReading}</div>
+                <div className="text-xs text-white/50">Reading</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">{stats.wantToRead}</div>
+                <div className="text-xs text-white/50">Want to Read</div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-white">{stats.currentlyReading}</div>
-              <div className="text-xs text-white/50">Reading</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-white">{stats.wantToRead}</div>
-              <div className="text-xs text-white/50">Want to Read</div>
-            </div>
+            <button 
+              onClick={() => setShowSearch(!showSearch)}
+              className="hidden md:inline-flex px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+            >
+              + Add Book
+            </button>
           </div>
-          <button 
+
+          <button
             onClick={() => setShowSearch(!showSearch)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+            className="md:hidden mt-3 w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
           >
             + Add Book
           </button>
@@ -399,16 +494,25 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
               {wantToRead.map(book => (
-                <div key={book.id} className="group cursor-pointer">
-                  {book.coverUrl ? (
-                    <img 
-                      src={book.coverUrl} 
-                      alt={book.title}
-                      className="w-full aspect-[2/3] object-cover rounded-lg shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all"
-                    />
-                  ) : (
-                    <div className="w-full aspect-[2/3] bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">📖</div>
-                  )}
+                <div
+                  key={book.id}
+                  className="group cursor-pointer"
+                  onClick={() => openEditBook(book)}
+                >
+                  <div className="relative">
+                    {book.coverUrl ? (
+                      <img 
+                        src={book.coverUrl} 
+                        alt={book.title}
+                        className="w-full aspect-[2/3] object-cover rounded-lg shadow-md group-hover:shadow-lg group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 transition-all"
+                      />
+                    ) : (
+                      <div className="w-full aspect-[2/3] bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center text-2xl group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 transition-all">📖</div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 rounded-lg flex items-center justify-center transition-all">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">Update Status</span>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -416,7 +520,7 @@ export default function Home() {
         )}
 
         {/* Empty State */}
-        {books.length === 0 && (
+        {activeLibraryBooks.length === 0 && (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">📚</div>
             <h2 className="text-2xl font-semibold text-white mb-2">Your library is empty</h2>

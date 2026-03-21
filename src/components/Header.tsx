@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useGamification } from '@/hooks/useGamification';
-import { LevelBadge, XPBar, StreakDisplay, XPPopup } from '@/components/gamification';
+import { LevelBadge, XPBar, XPPopup } from '@/components/gamification';
 
 interface HeaderProps {
   stats?: {
@@ -93,14 +93,15 @@ export default function Header({ stats }: HeaderProps) {
               {loading || gameLoading ? (
                 <div className="w-8 h-8 skeleton rounded-full" />
               ) : user ? (
-                <div className="flex items-center gap-4">
-                  {/* Gamification Stats - Desktop only */}
+                <div className="flex items-center gap-2 sm:gap-4">
+                  {/* Gamification Stats */}
                   {gameStats && (
-                    <div className="hidden sm:flex items-center gap-4">
-                      <StreakDisplay streak={gameStats.currentStreak} size="sm" />
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 mr-1">
+                      <span className="text-base sm:text-xl" aria-hidden="true">🏆</span>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <LevelBadge level={gameStats.level} size="sm" />
-                        <div className="w-20">
+                        <span className="hidden sm:inline text-xs text-white/60 whitespace-nowrap">{gameStats.xp.toLocaleString()} XP</span>
+                        <div className="w-12 sm:w-20">
                           <XPBar xp={gameStats.xp} level={gameStats.level} showLabel={false} size="sm" />
                         </div>
                       </div>
@@ -148,6 +149,13 @@ export default function Header({ stats }: HeaderProps) {
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                           >
                             <span>📖</span> Library
+                          </Link>
+                          <Link 
+                            href="/library/previous-reads" 
+                            onClick={() => setShowDropdown(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <span>🗓️</span> Previous Reads
                           </Link>
                           <Link 
                             href="/achievements" 
