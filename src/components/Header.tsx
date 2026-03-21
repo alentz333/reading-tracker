@@ -249,8 +249,6 @@ export default function Header({ stats }: HeaderProps) {
         </div>
       </nav>
       
-      {/* Spacer for mobile bottom nav */}
-      <div className="md:hidden h-20" />
     </>
   );
 }

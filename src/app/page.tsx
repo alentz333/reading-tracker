@@ -11,7 +11,7 @@ import { isPreviousReadBook } from '@/lib/previous-reads';
 import { getActiveReadBooksThisYear } from '@/lib/storage';
 
 export default function Home() {
-  const { books, loading, stats, addBook, updateBook, deleteBook, isAuthenticated } = useBooks();
+  const { books, loading, stats, addBook, updateBook, deleteBook } = useBooks();
   const { onBookStarted, onBookFinished } = useGamification();
   const [showSearch, setShowSearch] = useState(false);
   const [finishingBook, setFinishingBook] = useState<string | null>(null);
@@ -317,6 +317,21 @@ export default function Home() {
           >
             + Add Book
           </button>
+
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Link
+              href="/library"
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg border border-white/10 text-center transition-colors"
+            >
+              📖 Full Library
+            </Link>
+            <Link
+              href="/library/previous-reads"
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg border border-white/10 text-center transition-colors"
+            >
+              🗓️ Previous Reads
+            </Link>
+          </div>
         </div>
 
         {/* Search Panel */}
@@ -532,32 +547,6 @@ export default function Home() {
               🔍 Search for Books
             </button>
           </div>
-        )}
-
-        {/* Quick Links */}
-        {isAuthenticated && (
-          <section className="mt-10 pt-8 border-t border-white/10">
-            <div className="flex flex-wrap gap-3">
-              <Link 
-                href="/library" 
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg transition-colors"
-              >
-                📖 Full Library
-              </Link>
-              <Link 
-                href="/profile" 
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg transition-colors"
-              >
-                👤 Profile
-              </Link>
-              <Link 
-                href="/clubs" 
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg transition-colors"
-              >
-                👥 Book Clubs
-              </Link>
-            </div>
-          </section>
         )}
       </main>
     </div>

@@ -29,7 +29,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased min-h-screen">
+      <body className="antialiased min-h-screen pb-20 md:pb-0">
         <AuthProvider>
           {children}
         </AuthProvider>
