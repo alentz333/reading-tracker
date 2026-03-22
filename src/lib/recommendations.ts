@@ -16,6 +16,13 @@ export interface NewBookSuggestion {
   searchedQueries: string[];
   analyzedReadCount: number;
   analyzedPreviousReadCount: number;
+  fingerprint: string | null;
+}
+
+export interface NewBookSuggestionOptions {
+  excludeFingerprints?: string[];
+  dislikedAuthors?: string[];
+  dislikedTitleTerms?: string[];
 }
 
 interface QuerySeed {
@@ -33,6 +40,49 @@ interface SearchApiBook {
   publishedYear?: number;
 }
 
+const TITLE_STOP_WORDS = new Set([
+  'about',
+  'after',
+  'again',
+  'against',
+  'among',
+  'around',
+  'because',
+  'before',
+  'between',
+  'book',
+  'books',
+  'from',
+  'into',
+  'just',
+  'more',
+  'most',
+  'novel',
+  'novels',
+  'only',
+  'other',
+  'over',
+  'same',
+  'some',
+  'such',
+  'than',
+  'that',
+  'their',
+  'there',
+  'these',
+  'they',
+  'this',
+  'those',
+  'through',
+  'under',
+  'very',
+  'what',
+  'when',
+  'which',
+  'with',
+  'your',
+]);
+
 function normalizeToken(value?: string): string {
   return (value || '').trim().toLowerCase();
 }
@@ -41,8 +91,21 @@ function normalizeTitle(value?: string): string {
   return normalizeToken(value).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function normalizeBookFingerprint(title?: string, author?: string): string {
+export function getBookFingerprint(title?: string, author?: string): string {
   return `${normalizeTitle(title)}::${normalizeToken(author)}`;
+}
+
+export function extractTitleKeywords(title?: string): string[] {
+  const normalizedTitle = normalizeTitle(title);
+  if (!normalizedTitle) return [];
+
+  const keywords = normalizedTitle
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 4)
+    .filter((token) => !TITLE_STOP_WORDS.has(token));
+
+  return Array.from(new Set(keywords)).slice(0, 6);
 }
 
 function parseDateValue(value?: string): number | null {
@@ -311,14 +374,29 @@ export function suggestNextRead(books: Book[]): NextReadSuggestion {
   };
 }
 
-export async function suggestNewBookOutsideLibrary(books: Book[]): Promise<NewBookSuggestion> {
+export async function suggestNewBookOutsideLibrary(
+  books: Book[],
+  options: NewBookSuggestionOptions = {}
+): Promise<NewBookSuggestion> {
   const readHistory = books.filter(book => book.status === 'read');
   const previousReadCount = readHistory.filter(isPreviousReadBook).length;
   const seeds = buildDiscoverySeeds(books);
 
+  const excludedFingerprints = new Set(
+    (options.excludeFingerprints || []).map((value) => normalizeToken(value)).filter(Boolean)
+  );
+
+  const dislikedAuthors = new Set(
+    (options.dislikedAuthors || []).map((value) => normalizeToken(value)).filter(Boolean)
+  );
+
+  const dislikedTitleTerms = new Set(
+    (options.dislikedTitleTerms || []).map((value) => normalizeToken(value)).filter((value) => value.length >= 3)
+  );
+
   const existingFingerprints = new Set(
     books
-      .map((book) => normalizeBookFingerprint(book.title, book.author))
+      .map((book) => getBookFingerprint(book.title, book.author))
       .filter((value) => value !== '::')
   );
 
@@ -335,7 +413,12 @@ export async function suggestNewBookOutsideLibrary(books: Book[]): Promise<NewBo
   );
 
   const seenCandidateFingerprints = new Set<string>();
-  const discoveredCandidates: Array<{ book: Book; seed: QuerySeed; seedIndex: number }> = [];
+  const discoveredCandidates: Array<{
+    book: Book;
+    seed: QuerySeed;
+    seedIndex: number;
+    fingerprint: string;
+  }> = [];
 
   for (let seedIndex = 0; seedIndex < seeds.length; seedIndex++) {
     const seed = seeds[seedIndex];
@@ -348,15 +431,21 @@ export async function suggestNewBookOutsideLibrary(books: Book[]): Promise<NewBo
       const candidates = payload.books || [];
 
       candidates.forEach((candidate) => {
-        const candidateFingerprint = normalizeBookFingerprint(candidate.title, candidate.author);
+        const candidateFingerprint = getBookFingerprint(candidate.title, candidate.author);
         const isbnKey = normalizeToken(candidate.isbn);
         const olKey = normalizeToken(candidate.key);
+        const authorKey = normalizeToken(candidate.author);
+        const titleTokens = extractTitleKeywords(candidate.title);
 
         if (!candidate.title || candidateFingerprint === '::') return;
         if (existingFingerprints.has(candidateFingerprint)) return;
+        if (excludedFingerprints.has(candidateFingerprint)) return;
         if (isbnKey && existingIsbns.has(isbnKey)) return;
         if (olKey && existingOpenLibraryKeys.has(olKey)) return;
         if (seenCandidateFingerprints.has(candidateFingerprint)) return;
+
+        if (authorKey && dislikedAuthors.has(authorKey)) return;
+        if (titleTokens.some((token) => dislikedTitleTerms.has(token))) return;
 
         const candidateBook: Book = {
           id: `temp-${candidate.key || candidate.isbn || candidateFingerprint.replace(/\s+/g, '-')}`,
@@ -374,7 +463,12 @@ export async function suggestNewBookOutsideLibrary(books: Book[]): Promise<NewBo
         };
 
         seenCandidateFingerprints.add(candidateFingerprint);
-        discoveredCandidates.push({ book: candidateBook, seed, seedIndex });
+        discoveredCandidates.push({
+          book: candidateBook,
+          seed,
+          seedIndex,
+          fingerprint: candidateFingerprint,
+        });
       });
 
       if (discoveredCandidates.length >= 24) break;
@@ -391,6 +485,7 @@ export async function suggestNewBookOutsideLibrary(books: Book[]): Promise<NewBo
       searchedQueries: seeds.map((seed) => seed.query),
       analyzedReadCount: readHistory.length,
       analyzedPreviousReadCount: previousReadCount,
+      fingerprint: null,
     };
   }
 
@@ -416,10 +511,10 @@ export async function suggestNewBookOutsideLibrary(books: Book[]): Promise<NewBo
     return allPages.length > 0 ? median(allPages) : null;
   })();
 
-  const scored = discoveredCandidates.map(({ book, seed, seedIndex }) => {
+  const scored = discoveredCandidates.map(({ book, seed, seedIndex, fingerprint }) => {
     let score = 18 - seedIndex;
     const weightedReasons: Array<{ text: string; weight: number }> = [
-      { text: seed.reason, weight: 8 - seedIndex },
+      { text: seed.reason, weight: Math.max(1, 8 - seedIndex) },
     ];
 
     const authorKey = normalizeToken(book.author);
@@ -468,7 +563,7 @@ export async function suggestNewBookOutsideLibrary(books: Book[]): Promise<NewBo
       )
     );
 
-    return { book, score, reasons };
+    return { book, score, reasons, fingerprint };
   });
 
   scored.sort((a, b) => {
@@ -490,5 +585,6 @@ export async function suggestNewBookOutsideLibrary(books: Book[]): Promise<NewBo
     searchedQueries: seeds.map((seed) => seed.query),
     analyzedReadCount: readHistory.length,
     analyzedPreviousReadCount: previousReadCount,
+    fingerprint: winner.fingerprint,
   };
 }

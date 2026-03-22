@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
@@ -15,6 +15,12 @@ import {
   type NextReadSuggestion,
   type NewBookSuggestion,
 } from '@/lib/recommendations';
+import {
+  loadDiscoveryFeedback,
+  recordDislikedBook,
+  saveDiscoveryFeedback,
+  type DiscoveryFeedbackState,
+} from '@/lib/discovery-feedback';
 
 export default function Home() {
   const { books, loading, stats, addBook, updateBook, deleteBook } = useBooks();
@@ -34,6 +40,12 @@ export default function Home() {
   const [discoveringNewBook, setDiscoveringNewBook] = useState(false);
   const [newBookSuggestion, setNewBookSuggestion] = useState<NewBookSuggestion | null>(null);
   const [addingDiscoveredBook, setAddingDiscoveredBook] = useState(false);
+  const [sessionExcludedDiscoveries, setSessionExcludedDiscoveries] = useState<string[]>([]);
+  const [discoveryFeedback, setDiscoveryFeedback] = useState<DiscoveryFeedbackState>({
+    rejectedFingerprints: [],
+    rejectedAuthors: [],
+    rejectedTitleTerms: [],
+  });
 
   const activeLibraryBooks = books.filter(book => !isPreviousReadBook(book));
   const currentlyReading = activeLibraryBooks.filter(b => b.status === 'reading');
@@ -43,6 +55,10 @@ export default function Home() {
     return dateB.localeCompare(dateA);
   });
   const wantToRead = activeLibraryBooks.filter(b => b.status === 'want-to-read').slice(0, 8);
+
+  useEffect(() => {
+    setDiscoveryFeedback(loadDiscoveryFeedback());
+  }, []);
 
   const handleAddBook = async (book: Book, status?: ReadingStatus) => {
     const today = new Date().toISOString().split('T')[0];
@@ -191,16 +207,41 @@ export default function Home() {
     setStartingSuggestion(false);
   };
 
-  const fetchNewDiscoverySuggestion = async () => {
+  const fetchNewDiscoverySuggestion = async (
+    extraExcludedFingerprints: string[] = [],
+    feedbackOverride?: DiscoveryFeedbackState
+  ) => {
     setDiscoveringNewBook(true);
     setNewBookSuggestion(null);
 
-    const suggestion = await suggestNewBookOutsideLibrary(books);
+    const feedback = feedbackOverride || discoveryFeedback;
+
+    const suggestion = await suggestNewBookOutsideLibrary(books, {
+      excludeFingerprints: [
+        ...sessionExcludedDiscoveries,
+        ...feedback.rejectedFingerprints,
+        ...extraExcludedFingerprints,
+      ],
+      dislikedAuthors: feedback.rejectedAuthors,
+      dislikedTitleTerms: feedback.rejectedTitleTerms,
+    });
+
     setNewBookSuggestion(suggestion);
+
+    if (suggestion.fingerprint) {
+      const fingerprint = suggestion.fingerprint;
+      setSessionExcludedDiscoveries((previous) =>
+        previous.includes(fingerprint)
+          ? previous
+          : [...previous, fingerprint]
+      );
+    }
+
     setDiscoveringNewBook(false);
   };
 
   const openDiscoveryModal = () => {
+    setSessionExcludedDiscoveries([]);
     setShowDiscoveryModal(true);
     fetchNewDiscoverySuggestion();
   };
@@ -209,6 +250,7 @@ export default function Home() {
     setShowDiscoveryModal(false);
     setDiscoveringNewBook(false);
     setAddingDiscoveredBook(false);
+    setSessionExcludedDiscoveries([]);
   };
 
   const addDiscoveredToWantToRead = async () => {
@@ -223,6 +265,30 @@ export default function Home() {
     }
 
     setAddingDiscoveredBook(false);
+  };
+
+  const tryAnotherDiscovery = () => {
+    const currentFingerprint = newBookSuggestion?.fingerprint ? [newBookSuggestion.fingerprint] : [];
+    fetchNewDiscoverySuggestion(currentFingerprint);
+  };
+
+  const thumbsDownDiscovery = () => {
+    if (!newBookSuggestion?.book) return;
+
+    const nextFeedback = recordDislikedBook(
+      {
+        title: newBookSuggestion.book.title,
+        author: newBookSuggestion.book.author,
+        fingerprint: newBookSuggestion.fingerprint || undefined,
+      },
+      discoveryFeedback
+    );
+
+    setDiscoveryFeedback(nextFeedback);
+    saveDiscoveryFeedback(nextFeedback);
+
+    const currentFingerprint = newBookSuggestion.fingerprint ? [newBookSuggestion.fingerprint] : [];
+    fetchNewDiscoverySuggestion(currentFingerprint, nextFeedback);
   };
 
   if (loading) {
@@ -503,16 +569,24 @@ export default function Home() {
                 <div className="flex gap-3 flex-wrap">
                   <button
                     onClick={addDiscoveredToWantToRead}
-                    disabled={addingDiscoveredBook}
+                    disabled={addingDiscoveredBook || discoveringNewBook}
                     className="flex-1 min-w-[180px] px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
                   >
                     {addingDiscoveredBook ? 'Adding...' : '➕ Add to Want to Read'}
                   </button>
                   <button
-                    onClick={fetchNewDiscoverySuggestion}
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
+                    onClick={tryAnotherDiscovery}
+                    disabled={discoveringNewBook || addingDiscoveredBook}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-60 disabled:cursor-not-allowed text-white/70 rounded-lg transition-colors"
                   >
                     Try Another
+                  </button>
+                  <button
+                    onClick={thumbsDownDiscovery}
+                    disabled={discoveringNewBook || addingDiscoveredBook}
+                    className="px-4 py-2 bg-red-500/15 hover:bg-red-500/25 disabled:opacity-60 disabled:cursor-not-allowed text-red-300 rounded-lg border border-red-400/30 transition-colors"
+                  >
+                    👎 Not for me
                   </button>
                   <button
                     onClick={closeDiscoveryModal}
@@ -527,7 +601,7 @@ export default function Home() {
                 <p className="text-sm text-white/65 mb-6">{newBookSuggestion?.reasons[0] || 'Could not find a suggestion yet.'}</p>
                 <div className="flex gap-3">
                   <button
-                    onClick={fetchNewDiscoverySuggestion}
+                    onClick={() => fetchNewDiscoverySuggestion()}
                     className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium transition-colors"
                   >
                     Try Again
