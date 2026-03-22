@@ -9,7 +9,12 @@ import Header from '@/components/Header';
 import BookSearch from '@/components/BookSearch';
 import { isPreviousReadBook } from '@/lib/previous-reads';
 import { getActiveReadBooksThisYear } from '@/lib/storage';
-import { suggestNextRead, type NextReadSuggestion } from '@/lib/recommendations';
+import {
+  suggestNextRead,
+  suggestNewBookOutsideLibrary,
+  type NextReadSuggestion,
+  type NewBookSuggestion,
+} from '@/lib/recommendations';
 
 export default function Home() {
   const { books, loading, stats, addBook, updateBook, deleteBook } = useBooks();
@@ -25,6 +30,10 @@ export default function Home() {
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   const [nextSuggestion, setNextSuggestion] = useState<NextReadSuggestion | null>(null);
   const [startingSuggestion, setStartingSuggestion] = useState(false);
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
+  const [discoveringNewBook, setDiscoveringNewBook] = useState(false);
+  const [newBookSuggestion, setNewBookSuggestion] = useState<NewBookSuggestion | null>(null);
+  const [addingDiscoveredBook, setAddingDiscoveredBook] = useState(false);
 
   const activeLibraryBooks = books.filter(book => !isPreviousReadBook(book));
   const currentlyReading = activeLibraryBooks.filter(b => b.status === 'reading');
@@ -59,6 +68,8 @@ export default function Home() {
     if (success) {
       setShowSearch(false);
     }
+
+    return success;
   };
 
   const handleProgressChange = (bookId: string, progress: number) => {
@@ -178,6 +189,40 @@ export default function Home() {
     }
 
     setStartingSuggestion(false);
+  };
+
+  const fetchNewDiscoverySuggestion = async () => {
+    setDiscoveringNewBook(true);
+    setNewBookSuggestion(null);
+
+    const suggestion = await suggestNewBookOutsideLibrary(books);
+    setNewBookSuggestion(suggestion);
+    setDiscoveringNewBook(false);
+  };
+
+  const openDiscoveryModal = () => {
+    setShowDiscoveryModal(true);
+    fetchNewDiscoverySuggestion();
+  };
+
+  const closeDiscoveryModal = () => {
+    setShowDiscoveryModal(false);
+    setDiscoveringNewBook(false);
+    setAddingDiscoveredBook(false);
+  };
+
+  const addDiscoveredToWantToRead = async () => {
+    if (!newBookSuggestion?.book) return;
+
+    setAddingDiscoveredBook(true);
+    const success = await handleAddBook(newBookSuggestion.book, 'want-to-read');
+
+    if (success) {
+      closeDiscoveryModal();
+      return;
+    }
+
+    setAddingDiscoveredBook(false);
   };
 
   if (loading) {
@@ -400,6 +445,105 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Discover New Book Modal */}
+      {showDiscoveryModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+          <div className="bg-[#1a1a1b] rounded-2xl max-w-md w-full p-6 border border-white/10">
+            <h3 className="text-lg font-semibold text-white mb-1">🌟 Discover New Book</h3>
+            <p className="text-xs text-white/50 mb-5">
+              Finds books outside your current database based on your read history and backlog.
+            </p>
+
+            {discoveringNewBook ? (
+              <div className="py-8 flex flex-col items-center gap-3 text-white/70">
+                <div className="w-6 h-6 border-2 border-purple-400/30 border-t-purple-300 rounded-full animate-spin" />
+                <p className="text-sm">Finding a fresh recommendation...</p>
+              </div>
+            ) : newBookSuggestion?.book ? (
+              <>
+                <div className="flex gap-4 mb-5">
+                  {newBookSuggestion.book.coverUrl ? (
+                    <img
+                      src={newBookSuggestion.book.coverUrl}
+                      alt={newBookSuggestion.book.title}
+                      className="w-20 h-28 object-cover rounded-lg shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-20 h-28 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-lg flex items-center justify-center text-2xl">📘</div>
+                  )}
+                  <div>
+                    <h4 className="text-white font-semibold leading-snug">{newBookSuggestion.book.title}</h4>
+                    <p className="text-sm text-white/60 mt-1">{newBookSuggestion.book.author}</p>
+                    {newBookSuggestion.book.pageCount && (
+                      <p className="text-xs text-white/40 mt-1">{newBookSuggestion.book.pageCount} pages</p>
+                    )}
+                    {newBookSuggestion.book.publishedYear && (
+                      <p className="text-xs text-white/35 mt-1">Published {newBookSuggestion.book.publishedYear}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <p className="text-sm font-medium text-white/75 mb-2">Why this pick</p>
+                  <ul className="space-y-2">
+                    {newBookSuggestion.reasons.map((reason) => (
+                      <li key={reason} className="text-sm text-white/65 flex gap-2">
+                        <span className="text-purple-300">•</span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <p className="text-xs text-white/45 mb-5">
+                  Searched {newBookSuggestion.consideredCount} new candidates across {newBookSuggestion.searchedQueries.length} query {newBookSuggestion.searchedQueries.length === 1 ? 'seed' : 'seeds'}.
+                </p>
+
+                <div className="flex gap-3 flex-wrap">
+                  <button
+                    onClick={addDiscoveredToWantToRead}
+                    disabled={addingDiscoveredBook}
+                    className="flex-1 min-w-[180px] px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                  >
+                    {addingDiscoveredBook ? 'Adding...' : '➕ Add to Want to Read'}
+                  </button>
+                  <button
+                    onClick={fetchNewDiscoverySuggestion}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
+                  >
+                    Try Another
+                  </button>
+                  <button
+                    onClick={closeDiscoveryModal}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-white/65 mb-6">{newBookSuggestion?.reasons[0] || 'Could not find a suggestion yet.'}</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={fetchNewDiscoverySuggestion}
+                    className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Try Again
+                  </button>
+                  <button
+                    onClick={closeDiscoveryModal}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Stats Bar */}
@@ -438,7 +582,7 @@ export default function Home() {
             + Add Book
           </button>
 
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Link
               href="/library"
               className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg border border-white/10 text-center transition-colors"
@@ -456,6 +600,12 @@ export default function Home() {
               className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-200 rounded-lg border border-indigo-400/30 text-center transition-colors"
             >
               ✨ Suggest Next Read
+            </button>
+            <button
+              onClick={openDiscoveryModal}
+              className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 rounded-lg border border-purple-400/30 text-center transition-colors"
+            >
+              🌟 Discover New Book
             </button>
           </div>
         </div>
