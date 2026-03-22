@@ -9,6 +9,7 @@ import Header from '@/components/Header';
 import BookSearch from '@/components/BookSearch';
 import { isPreviousReadBook } from '@/lib/previous-reads';
 import { getActiveReadBooksThisYear } from '@/lib/storage';
+import { suggestNextRead, type NextReadSuggestion } from '@/lib/recommendations';
 
 export default function Home() {
   const { books, loading, stats, addBook, updateBook, deleteBook } = useBooks();
@@ -21,6 +22,9 @@ export default function Home() {
   const [editRating, setEditRating] = useState<number>(0);
   const [editReview, setEditReview] = useState<string>('');
   const [localProgress, setLocalProgress] = useState<Record<string, number>>({});
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
+  const [nextSuggestion, setNextSuggestion] = useState<NextReadSuggestion | null>(null);
+  const [startingSuggestion, setStartingSuggestion] = useState(false);
 
   const activeLibraryBooks = books.filter(book => !isPreviousReadBook(book));
   const currentlyReading = activeLibraryBooks.filter(b => b.status === 'reading');
@@ -142,6 +146,38 @@ export default function Home() {
     setEditStatus('read');
     setEditRating(0);
     setEditReview('');
+  };
+
+  const openSuggestionModal = () => {
+    setNextSuggestion(suggestNextRead(books));
+    setShowSuggestionModal(true);
+  };
+
+  const closeSuggestionModal = () => {
+    setShowSuggestionModal(false);
+    setStartingSuggestion(false);
+  };
+
+  const startSuggestedBook = async () => {
+    if (!nextSuggestion?.book) return;
+
+    setStartingSuggestion(true);
+    const today = new Date().toISOString().split('T')[0];
+
+    const success = await updateBook(nextSuggestion.book.id, {
+      status: 'reading',
+      progress: 0,
+      dateStarted: nextSuggestion.book.dateStarted || today,
+      dateFinished: undefined,
+    });
+
+    if (success) {
+      await onBookStarted(nextSuggestion.book.id);
+      closeSuggestionModal();
+      return;
+    }
+
+    setStartingSuggestion(false);
   };
 
   if (loading) {
@@ -280,6 +316,90 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Next Read Suggestion Modal */}
+      {showSuggestionModal && nextSuggestion && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+          <div className="bg-[#1a1a1b] rounded-2xl max-w-md w-full p-6 border border-white/10">
+            <h3 className="text-lg font-semibold text-white mb-1">✨ Next Read Suggestion</h3>
+            <p className="text-xs text-white/50 mb-5">
+              Analyzed {nextSuggestion.analyzedReadCount} read books ({nextSuggestion.analyzedPreviousReadCount} previous reads) and {nextSuggestion.consideredCount} Want to Read candidates.
+            </p>
+
+            {nextSuggestion.book ? (
+              <>
+                <div className="flex gap-4 mb-5">
+                  {nextSuggestion.book.coverUrl ? (
+                    <img
+                      src={nextSuggestion.book.coverUrl}
+                      alt={nextSuggestion.book.title}
+                      className="w-20 h-28 object-cover rounded-lg shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-20 h-28 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-2xl">📖</div>
+                  )}
+                  <div>
+                    <h4 className="text-white font-semibold leading-snug">{nextSuggestion.book.title}</h4>
+                    <p className="text-sm text-white/60 mt-1">{nextSuggestion.book.author}</p>
+                    {nextSuggestion.book.pageCount && (
+                      <p className="text-xs text-white/40 mt-1">{nextSuggestion.book.pageCount} pages</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-sm font-medium text-white/75 mb-2">Why this pick</p>
+                  <ul className="space-y-2">
+                    {nextSuggestion.reasons.map((reason) => (
+                      <li key={reason} className="text-sm text-white/65 flex gap-2">
+                        <span className="text-indigo-300">•</span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={startSuggestedBook}
+                    disabled={startingSuggestion}
+                    className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                  >
+                    {startingSuggestion ? 'Starting...' : '📖 Start Reading'}
+                  </button>
+                  <button
+                    onClick={closeSuggestionModal}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-white/65 mb-6">{nextSuggestion.reasons[0]}</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      closeSuggestionModal();
+                      setShowSearch(true);
+                    }}
+                    className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+                  >
+                    + Add Book
+                  </button>
+                  <button
+                    onClick={closeSuggestionModal}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Stats Bar */}
@@ -318,7 +438,7 @@ export default function Home() {
             + Add Book
           </button>
 
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <Link
               href="/library"
               className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg border border-white/10 text-center transition-colors"
@@ -331,6 +451,12 @@ export default function Home() {
             >
               🗓️ Previous Reads
             </Link>
+            <button
+              onClick={openSuggestionModal}
+              className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-200 rounded-lg border border-indigo-400/30 text-center transition-colors"
+            >
+              ✨ Suggest Next Read
+            </button>
           </div>
         </div>
 
