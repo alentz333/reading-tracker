@@ -136,12 +136,19 @@ export default function Header({ stats }: HeaderProps) {
                         </div>
                         
                         <div className="py-1">
-                          <Link 
-                            href="/profile" 
+                          <Link
+                            href="/profile"
                             onClick={() => setShowDropdown(false)}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                           >
                             <span>👤</span> My Profile
+                          </Link>
+                          <Link
+                            href="/stats"
+                            onClick={() => setShowDropdown(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <span>📊</span> Reading Stats
                           </Link>
                           <Link 
                             href="/library" 
