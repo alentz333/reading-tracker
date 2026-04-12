@@ -641,20 +641,7 @@ export default function Home() {
                 <div className="text-xs text-white/50">Want to Read</div>
               </div>
             </div>
-            <button 
-              onClick={() => setShowSearch(!showSearch)}
-              className="hidden md:inline-flex px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
-            >
-              + Add Book
-            </button>
           </div>
-
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            className="md:hidden mt-3 w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
-          >
-            + Add Book
-          </button>
 
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Link
@@ -680,6 +667,12 @@ export default function Home() {
               className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 rounded-lg border border-purple-400/30 text-center transition-colors"
             >
               🌟 Discover New Book
+            </button>
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium text-center transition-colors"
+            >
+              + Add Book
             </button>
           </div>
         </div>
