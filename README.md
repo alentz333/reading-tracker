@@ -1,155 +1,161 @@
-# 📚 ReggieReader
+# 🌙 Baby Sleep Tracker
 
-A personal reading tracker with social book club features. Track what you're reading, share your library with friends, and join book clubs.
+A PWA-ready web app for tracking your baby's naps and night sleep. Two parents, one shared account, real-time sync.
 
-![Next.js](https://img.shields.io/badge/Next.js-16.x-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
-![Supabase](https://img.shields.io/badge/Supabase-Postgres-green)
+**Stack:** Next.js 16 · TypeScript · Tailwind CSS 4 · Supabase (Postgres + Auth + Realtime) · Recharts
 
 ---
 
-## Features
+## Setup
 
-### 📖 Personal Library
-- Search and add books via Open Library API
-- Track reading status: Want to Read → Reading → Read
-- Rate books (1-5 stars) and add personal notes
-- Scan book covers with camera (AI-powered identification)
-- Import from Goodreads CSV export
+### 1. Create a Supabase project
 
-### 👤 Social Profiles
-- Public/private profile pages
-- Display name, avatar, and bio
-- Control which books are visible to others
-- Search and discover other readers
+1. Go to [supabase.com](https://supabase.com) and create a new project.
+2. Copy the **Project URL**, **anon key**, and **service role key** from Project Settings → API.
 
-### 📕 Book Clubs
-- Create public or private clubs
-- Invite members via join code
-- Add books as "Current Read" or "Upcoming"
-- See what your club is reading together
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Framework | [Next.js 16](https://nextjs.org) (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS 4 |
-| Database | [Supabase](https://supabase.com) (Postgres) |
-| Auth | Supabase Auth (Email + OAuth) |
-| Book Data | [Open Library API](https://openlibrary.org/developers/api) |
-| Hosting | [Vercel](https://vercel.com) |
-
----
-
-## Getting Started
-
-### Prerequisites
-- Node.js 18+
-- Supabase account (free tier works)
-
-### Installation
+### 2. Configure environment variables
 
 ```bash
-# Clone the repository
-git clone https://github.com/alentz333/reading-tracker.git
-cd reading-tracker
-
-# Install dependencies
-npm install
-
-# Copy environment template
 cp .env.example .env.local
+# Fill in your Supabase credentials and baby details
 ```
 
-### Configure Supabase
+`.env.local` values:
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. Copy your project URL and anon key
-3. Update `.env.local`:
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (public) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (seed script only — never commit) |
+| `SEED_BABY_NAME` | Baby's first name |
+| `SEED_BABY_DOB` | Baby's date of birth (`YYYY-MM-DD`) |
+| `SEED_USER_EMAIL` | Shared email for both parents |
+| `SEED_USER_PASSWORD` | Initial password (change after first login) |
+
+### 3. Run the database migration
+
+Open the Supabase SQL editor and paste the contents of `supabase/migrations/0001_init.sql`. Run it. This creates all tables, indexes, and RLS policies.
+
+### 4. Seed the database
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+npm run seed
 ```
 
-4. Run the database schema (see `SOCIAL_EXPANSION_PLAN.md` for SQL)
+This script (using the service role key):
+- Creates the auth user with your `SEED_USER_EMAIL` / `SEED_USER_PASSWORD`.
+- Inserts the baby row.
+- Inserts the wake window reference rows.
 
-### Run Development Server
+Safe to re-run — it checks for existing rows first.
+
+### 5. Start locally
 
 ```bash
 npm run dev
+# Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+### 6. Deploy to Vercel
+
+1. Push to GitHub.
+2. Import the repo into Vercel.
+3. Set the following environment variables in the Vercel dashboard (do **not** include `SUPABASE_SERVICE_ROLE_KEY` or `SEED_*` vars):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. In Supabase Auth settings, set:
+   - **Site URL:** `https://your-app.vercel.app`
+   - **Redirect URL:** `https://your-app.vercel.app/auth/callback`
+5. Trigger a deployment.
+
+### 7. Install as PWA
+
+- **iOS Safari:** open the app → Share → Add to Home Screen.
+- **Android Chrome:** open the app → menu → Add to Home Screen / Install App.
 
 ---
 
-## Project Structure
+## Usage
+
+### Logging sleep
+
+1. Sign in with the shared credentials.
+2. On the **Home** tab:
+   - Tap **"Down for nap"** (before 6 pm) or **"Down for night"** (6 pm or later) when the baby goes to sleep.
+   - Tap **"Awake from nap"** when the baby wakes from a nap.
+   - For night sleep: tap **"Night waking"** each time the baby wakes, then **"Back asleep"** when they settle. Tap **"Morning wake"** (available after 5 am) to close everything at once.
+3. Both parents see live updates within ~2 seconds.
+
+### Reading the status card
+
+The color bar under "Awake for…" shows how far through the age-appropriate wake window the baby is:
+
+- **Green** — below the minimum (likely still has time before next nap)
+- **Amber** — in the target window (good time to start the nap routine)
+- **Red** — over the maximum (overtired territory, start now)
+
+### Analysis
+
+The **Analysis** tab shows rolling charts for the last 7, 14, or 30 days including total sleep, naps per day, longest night stretch, and night wakings.
+
+---
+
+## Development commands
+
+```bash
+npm run dev      # Start dev server at http://localhost:3000
+npm run build    # Production build
+npm run lint     # ESLint
+npm run seed     # Seed Supabase with user + baby + wake window data
+```
+
+---
+
+## Project structure
 
 ```
 src/
-├── app/                    # Next.js App Router pages
-│   ├── auth/               # Login, signup, callback
-│   ├── clubs/              # Book clubs pages
-│   ├── profile/            # User profile
-│   ├── user/[username]/    # Public profile view
-│   └── api/                # API routes (search, identify)
-├── components/             # React components
-│   ├── auth/               # Auth-related components
-│   ├── BookCard.tsx        # Book display card
-│   ├── BookSearch.tsx      # Open Library search
-│   ├── CameraScanner.tsx   # AI book cover scanning
-│   └── ...
-├── hooks/                  # Custom React hooks
-│   └── useBooks.ts         # Book CRUD operations
+├── app/
+│   ├── page.tsx            # Redirects to /home or /login
+│   ├── login/page.tsx
+│   ├── home/page.tsx       # Home tab
+│   ├── log/page.tsx        # Log tab
+│   └── analysis/page.tsx   # Analysis tab
+├── components/
+│   ├── StatusCard.tsx
+│   ├── PrimaryActionButton.tsx
+│   ├── SessionRow.tsx
+│   ├── TabBar.tsx
+│   └── charts/
+├── hooks/
+│   ├── useCurrentBaby.ts
+│   ├── useOpenSession.ts
+│   ├── useTodaySessions.ts
+│   └── useRealtimeSync.ts
 ├── lib/
-│   ├── supabase/           # Supabase client config
-│   └── storage.ts          # Storage utilities
-└── types/
-    └── book.ts             # TypeScript types
+│   ├── config.ts           # BEDTIME_CUTOFF_HOUR, MORNING_CUTOFF_HOUR, etc.
+│   ├── wakeWindows.ts      # Wake window lookup + color cue logic
+│   ├── sleepLogic.ts       # Derived calculations (longest stretch, avg wake window)
+│   ├── dateUtils.ts        # Formatting helpers
+│   └── supabase/
+scripts/
+└── seed.ts                 # One-shot database seed
+supabase/
+└── migrations/
+    └── 0001_init.sql       # All tables, indexes, RLS
 ```
 
 ---
 
-## Deployment
+## Wake window reference
 
-See [DEPLOY.md](./DEPLOY.md) for complete deployment instructions.
-
-**Quick deploy:**
-```bash
-vercel
-```
-
-**Remember to:**
-1. Set environment variables in Vercel
-2. Configure Supabase auth redirect URLs
-3. Test auth flow in production
+Age-appropriate wake windows are stored in the `wake_window_reference` Supabase table (seeded by `npm run seed`). They are sourced from Huckleberry and Taking Cara Babies published ranges. Edit directly in Supabase if you need to adjust them.
 
 ---
 
-## Roadmap
+## Known limitations (v1)
 
-- [x] Personal library with search
-- [x] Supabase auth & cloud sync
-- [x] Social profiles (public/private)
-- [x] Book clubs MVP
-- [ ] Activity feed
-- [ ] Reading challenges
-- [ ] Discussion threads
-- [ ] Mobile PWA
-
-See `SOCIAL_EXPANSION_PLAN.md` for the full feature roadmap.
-
----
-
-## License
-
-MIT
-
----
-
-Built with ☕ and 🥔 by [Reggie](https://github.com/alentz333)
+- **No edit/delete from the UI.** If you tap the wrong button, edit directly in Supabase.
+- **Shared account only.** One email + password for both parents.
+- **No offline support.** Requires an internet connection.
+- **6 pm bedtime cutoff** is a heuristic — a 5:30 pm nap will be logged as a nap.

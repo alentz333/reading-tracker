@@ -1,38 +1,29 @@
-import type { Metadata, Viewport } from "next";
-import "./globals.css";
-import { AuthProvider } from "@/components/auth/AuthProvider";
+import type { Metadata, Viewport } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Shelf | Your Reading Life",
-  description: "Track, discover, and share your reading journey",
+  title: 'Baby Sleep Tracker',
+  description: 'Track naps and night sleep for your baby',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Sleep Tracker',
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0a0a0b',
+  themeColor: '#6366f1',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="antialiased min-h-screen pb-20 md:pb-0">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+      <body className="antialiased min-h-screen bg-slate-50">
+        {children}
       </body>
     </html>
   );

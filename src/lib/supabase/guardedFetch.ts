@@ -10,6 +10,7 @@ export function createGuardedSupabaseFetch(
   supabaseProjectUrl: string,
   baseFetch: typeof fetch = fetch
 ): typeof fetch {
+  if (!supabaseProjectUrl) return baseFetch;
   const projectOrigin = new URL(supabaseProjectUrl).origin
 
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
