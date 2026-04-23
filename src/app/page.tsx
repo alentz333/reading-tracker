@@ -326,9 +326,18 @@ export default function Home() {
                 {editingBook.dateFinished && (
                   <p className="text-xs text-white/30 mt-1">Finished {editingBook.dateFinished}</p>
                 )}
+                {(editingBook.genres?.length ?? 0) > 0 && (
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {editingBook.genres!.slice(0, 5).map(genre => (
+                      <span key={genre} className="inline-flex items-center text-[0.625rem] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-medium tracking-wide">
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            
+
             {/* Status */}
             <div className="mb-5">
               <label className="text-sm text-white/60 block mb-2">Status</label>
@@ -921,8 +930,8 @@ export default function Home() {
                 >
                   <div className="relative">
                     {book.coverUrl ? (
-                      <img 
-                        src={book.coverUrl} 
+                      <img
+                        src={book.coverUrl}
                         alt={book.title}
                         className="w-full aspect-[2/3] object-cover rounded-lg shadow-md group-hover:shadow-lg group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 transition-all"
                       />
