@@ -20,6 +20,7 @@ interface PublicBook {
   title: string
   author: string
   cover_url: string | null
+  genres: string[]
   status: string
   rating: number | null
   finished_at: string | null
@@ -67,7 +68,8 @@ export default function UserProfilePage() {
           books (
             title,
             author,
-            cover_url
+            cover_url,
+            genres
           )
         `)
         .eq('user_id', profileData.id)
@@ -80,6 +82,7 @@ export default function UserProfilePage() {
           title: b.books.title,
           author: b.books.author,
           cover_url: b.books.cover_url,
+          genres: b.books.genres || [],
           status: b.status,
           rating: b.rating,
           finished_at: b.finished_at,
@@ -266,6 +269,18 @@ export default function UserProfilePage() {
                       <span className="text-sm">{'⭐'.repeat(book.rating)}</span>
                     )}
                   </div>
+                  {book.genres.length > 0 && (
+                    <div className="flex gap-1 mt-1.5 flex-wrap">
+                      {book.genres.slice(0, 3).map(genre => (
+                        <span
+                          key={genre}
+                          className="text-[0.625rem] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium"
+                        >
+                          {genre}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -60,6 +60,9 @@ export default function Home() {
     setDiscoveryFeedback(loadDiscoveryFeedback());
   }, []);
 
+  const genreEntries = Object.entries(stats.byGenre).sort((a, b) => b[1] - a[1]);
+  const booksWithGenres = books.filter(b => b.status === 'read' && (b.genres?.length ?? 0) > 0).length;
+
   const handleAddBook = async (book: Book, status?: ReadingStatus) => {
     const today = new Date().toISOString().split('T')[0];
     const nextStatus = status || book.status;
@@ -715,7 +718,19 @@ export default function Home() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-white">{book.title}</h3>
                       <p className="text-sm text-white/50">{book.author}</p>
-                      
+                      {(book.genres?.length ?? 0) > 0 && (
+                        <div className="flex gap-1 mt-1.5 flex-wrap">
+                          {book.genres!.slice(0, 3).map(genre => (
+                            <span
+                              key={genre}
+                              className="inline-flex items-center text-[0.625rem] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-medium tracking-wide"
+                            >
+                              {genre}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Progress Section */}
                       <div className="mt-3">
                         <div className="flex items-center gap-3">
@@ -836,6 +851,53 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Genre Breakdown */}
+        {stats.totalBooks > 0 && (
+          <section className="mb-10">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              🏷️ Genre Breakdown
+            </h2>
+            {booksWithGenres < 3 ? (
+              <div className="p-6 bg-white/5 rounded-xl border border-white/10 text-center">
+                <p className="text-3xl mb-3">📖</p>
+                <p className="text-white/70 font-medium">Not enough data yet</p>
+                <p className="text-white/40 text-sm mt-1">
+                  Read {Math.max(0, 3 - booksWithGenres)} more {3 - booksWithGenres === 1 ? 'book' : 'books'} added after this update to see your genre breakdown
+                </p>
+              </div>
+            ) : (
+              <div className="p-5 bg-white/5 rounded-xl border border-white/10">
+                <div className="flex gap-6 mb-5">
+                  <div>
+                    <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Top Genre</div>
+                    <div className="text-white font-semibold">{genreEntries[0][0]}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Genre Diversity</div>
+                    <div className="text-white font-semibold">
+                      {genreEntries.length} {genreEntries.length === 1 ? 'genre' : 'genres'}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  {genreEntries.slice(0, 8).map(([genre, count]) => (
+                    <div key={genre} className="flex items-center gap-3">
+                      <div className="w-32 text-sm text-white/60 text-right shrink-0 truncate">{genre}</div>
+                      <div className="flex-1 bg-white/10 rounded-full h-1.5">
+                        <div
+                          className="bg-indigo-500 h-1.5 rounded-full"
+                          style={{ width: `${(count / genreEntries[0][1]) * 100}%` }}
+                        />
+                      </div>
+                      <div className="w-6 text-xs text-white/40 text-right shrink-0">{count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
 

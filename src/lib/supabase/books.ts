@@ -27,6 +27,69 @@ interface SupabaseBook {
     description: string | null
     page_count: number | null
     published_date: string | null
+    genres: string[] | null
+  }
+}
+
+// Ordered from most-specific to least-specific so earlier rules win.
+const GENRE_RULES: [string[], string][] = [
+  [['young adult', 'ya fiction', 'young-adult', 'teen fiction'], 'Young Adult'],
+  [["children's", 'juvenile', 'picture book', 'easy reader'], "Children's"],
+  [['science fiction', 'sci-fi', 'space opera', 'dystopian', 'cyberpunk', 'time travel', 'speculative fiction'], 'Science Fiction'],
+  [['fantasy', 'epic fantasy', 'high fantasy', 'sword and sorcery', 'magical realism', 'wizards', 'dragons'], 'Fantasy'],
+  [['mystery', 'detective', 'whodunit', 'cozy mystery', 'hardboiled', 'crime fiction', 'murder mystery'], 'Mystery'],
+  [['thriller', 'suspense', 'espionage', 'spy fiction', 'techno-thriller'], 'Thriller'],
+  [['horror', 'ghost stories', 'supernatural fiction', 'gothic fiction', 'dark fiction'], 'Horror'],
+  [['romance', 'love stories', 'romantic fiction'], 'Romance'],
+  [['historical fiction', 'historical novel'], 'Historical Fiction'],
+  [['biography', 'autobiography', 'memoir', 'life story', 'personal narratives'], 'Biography'],
+  [['self-help', 'personal development', 'self improvement', 'self-improvement', 'motivational'], 'Self-Help'],
+  [['history', 'world history', 'ancient history', 'military history'], 'History'],
+  [['science', 'physics', 'biology', 'chemistry', 'astronomy', 'natural history', 'popular science'], 'Science'],
+  [['psychology', 'psychological', 'psychiatry', 'cognitive', 'behavioral'], 'Psychology'],
+  [['philosophy', 'philosophical', 'ethics', 'logic', 'metaphysics'], 'Philosophy'],
+  [['business', 'economic', 'finance', 'entrepreneurship', 'management', 'leadership', 'marketing'], 'Business'],
+  [['politics', 'political', 'government', 'democracy'], 'Politics'],
+  [['religion', 'spiritual', 'theology', 'christian', 'islamic', 'buddhis', 'hindu'], 'Religion'],
+  [['adventure', 'action and adventure'], 'Adventure'],
+  [['humor', 'comedy', 'satire', 'humorous', 'wit and humor'], 'Humor'],
+  [['poetry', 'verse', 'poems'], 'Poetry'],
+  [['drama', 'plays', 'theatrical'], 'Drama'],
+  [['graphic novel', 'comics', 'manga', 'comic book'], 'Graphic Novel'],
+  [['cooking', 'food', 'recipes', 'cuisine', 'baking', 'gastronomy'], 'Cooking'],
+  [['travel', 'travelogue', 'travel writing'], 'Travel'],
+  [['nonfiction', 'non-fiction', 'popular works'], 'Nonfiction'],
+  [['fiction'], 'Fiction'],
+]
+
+function normalizeGenres(subjects: string[]): string[] {
+  const found: string[] = []
+  for (const subject of subjects) {
+    const lower = subject.toLowerCase()
+    for (const [keywords, genre] of GENRE_RULES) {
+      if (found.includes(genre)) continue
+      if (keywords.some(kw => lower.includes(kw))) {
+        found.push(genre)
+        break
+      }
+    }
+    if (found.length >= 5) break
+  }
+  return found.slice(0, 5)
+}
+
+async function fetchGenresFromOpenLibrary(olKey: string): Promise<string[]> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 4000)
+    const response = await fetch(`https://openlibrary.org${olKey}.json`, { signal: controller.signal })
+    clearTimeout(timeout)
+    if (!response.ok) return []
+    const data = await response.json()
+    const subjects: string[] = data.subjects || []
+    return normalizeGenres(subjects)
+  } catch {
+    return []
   }
 }
 
@@ -71,6 +134,7 @@ function mapSupabaseToBook(sb: SupabaseBook): Book {
     dateStarted: sb.started_at || undefined,
     dateFinished: sb.finished_at || undefined,
     review: sb.review || undefined,
+    genres: sb.books.genres ?? undefined,
     addedAt: sb.created_at,
     source: 'manual',
     isPublic: sb.is_public,
@@ -78,36 +142,39 @@ function mapSupabaseToBook(sb: SupabaseBook): Book {
   }
 }
 
+const BOOK_SELECT = `
+  id,
+  book_id,
+  status,
+  current_page,
+  started_at,
+  finished_at,
+  rating,
+  review,
+  notes,
+  is_favorite,
+  is_public,
+  created_at,
+  books (
+    id,
+    title,
+    author,
+    isbn,
+    cover_url,
+    description,
+    page_count,
+    published_date,
+    genres
+  )
+`
+
 export async function fetchBooks(): Promise<Book[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
   const { data, error } = await supabase
     .from('user_books')
-    .select(`
-      id,
-      book_id,
-      status,
-      current_page,
-      started_at,
-      finished_at,
-      rating,
-      review,
-      notes,
-      is_favorite,
-      is_public,
-      created_at,
-      books (
-        id,
-        title,
-        author,
-        isbn,
-        cover_url,
-        description,
-        page_count,
-        published_date
-      )
-    `)
+    .select(BOOK_SELECT)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
@@ -123,20 +190,26 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  // First, create or find the book in the books table
   let bookId: string
 
-  // Check if book exists by ISBN
   if (book.isbn) {
     const { data: existingBook } = await supabase
       .from('books')
-      .select('id')
+      .select('id, genres')
       .eq('isbn', book.isbn)
       .single()
 
     if (existingBook) {
       bookId = existingBook.id
+      // Backfill genres if missing and we have an OL key
+      if (book.olKey && (!existingBook.genres || existingBook.genres.length === 0)) {
+        const genres = await fetchGenresFromOpenLibrary(book.olKey)
+        if (genres.length > 0) {
+          await supabase.from('books').update({ genres }).eq('id', existingBook.id)
+        }
+      }
     } else {
+      const genres = book.olKey ? await fetchGenresFromOpenLibrary(book.olKey) : []
       const { data: newBook, error } = await supabase
         .from('books')
         .insert({
@@ -146,6 +219,8 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
           cover_url: book.coverUrl,
           page_count: book.pageCount,
           published_date: book.publishedYear?.toString(),
+          ol_key: book.olKey,
+          genres,
         })
         .select('id')
         .single()
@@ -157,7 +232,7 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
       bookId = newBook.id
     }
   } else {
-    // No ISBN, just create a new book entry
+    const genres = book.olKey ? await fetchGenresFromOpenLibrary(book.olKey) : []
     const { data: newBook, error } = await supabase
       .from('books')
       .insert({
@@ -166,6 +241,8 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
         cover_url: book.coverUrl,
         page_count: book.pageCount,
         published_date: book.publishedYear?.toString(),
+        ol_key: book.olKey,
+        genres,
       })
       .select('id')
       .single()
@@ -177,7 +254,6 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
     bookId = newBook.id
   }
 
-  // Now create the user_book entry
   const { data: userBook, error } = await supabase
     .from('user_books')
     .insert({
@@ -190,30 +266,7 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
       review: book.review,
       notes: book.isPreviousRead ? PREVIOUS_READ_NOTE_TAG : null,
     })
-    .select(`
-      id,
-      book_id,
-      status,
-      current_page,
-      started_at,
-      finished_at,
-      rating,
-      review,
-      notes,
-      is_favorite,
-      is_public,
-      created_at,
-      books (
-        id,
-        title,
-        author,
-        isbn,
-        cover_url,
-        description,
-        page_count,
-        published_date
-      )
-    `)
+    .select(BOOK_SELECT)
     .single()
 
   if (error || !userBook) {

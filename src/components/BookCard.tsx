@@ -103,6 +103,19 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
               <span className="text-xs text-white/40">{book.pageCount} pages</span>
             )}
           </div>
+
+          {(book.genres?.length ?? 0) > 0 && (
+            <div className="flex gap-1 mt-2 flex-wrap">
+              {book.genres!.slice(0, 3).map(genre => (
+                <span
+                  key={genre}
+                  className="inline-flex items-center text-[0.625rem] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-medium tracking-wide"
+                >
+                  {genre}
+                </span>
+              ))}
+            </div>
+          )}
           
           {/* Star Rating */}
           {book.status === 'read' && (

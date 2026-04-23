@@ -53,6 +53,7 @@ export interface Database {
           published_date: string | null
           ol_key: string | null
           google_books_id: string | null
+          genres: string[] | null
           created_at: string
         }
         Insert: {
@@ -66,6 +67,7 @@ export interface Database {
           published_date?: string | null
           ol_key?: string | null
           google_books_id?: string | null
+          genres?: string[] | null
           created_at?: string
         }
         Update: {
@@ -79,6 +81,7 @@ export interface Database {
           published_date?: string | null
           ol_key?: string | null
           google_books_id?: string | null
+          genres?: string[] | null
           created_at?: string
         }
       }
