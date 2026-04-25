@@ -636,22 +636,22 @@ export default function Home() {
         <div className="mb-8">
           <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
             <div className="flex items-center gap-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white">{stats.booksThisYear}</div>
+              <a href="#recently-read" className="text-center cursor-pointer group">
+                <div className="text-2xl font-bold text-white group-hover:underline">{stats.booksThisYear}</div>
                 <div className="text-xs text-white/50">Read This Year</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white">{stats.totalBooks}</div>
+              </a>
+              <a href="/library" className="text-center cursor-pointer group">
+                <div className="text-2xl font-bold text-white group-hover:underline">{stats.totalBooks}</div>
                 <div className="text-xs text-white/50">Read All Time</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white">{stats.currentlyReading}</div>
+              </a>
+              <a href="#currently-reading" className="text-center cursor-pointer group">
+                <div className="text-2xl font-bold text-white group-hover:underline">{stats.currentlyReading}</div>
                 <div className="text-xs text-white/50">Reading</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white">{stats.wantToRead}</div>
+              </a>
+              <a href="#want-to-read" className="text-center cursor-pointer group">
+                <div className="text-2xl font-bold text-white group-hover:underline">{stats.wantToRead}</div>
                 <div className="text-xs text-white/50">Want to Read</div>
-              </div>
+              </a>
             </div>
           </div>
 
@@ -707,7 +707,7 @@ export default function Home() {
 
         {/* Currently Reading */}
         {currentlyReading.length > 0 && (
-          <section className="mb-10">
+          <section id="currently-reading" className="mb-10">
             <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
               📖 Currently Reading
             </h2>
@@ -823,7 +823,7 @@ export default function Home() {
 
         {/* Recently Read */}
         {recentlyRead.length > 0 && (
-          <section className="mb-10">
+          <section id="recently-read" className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 ✅ Recently Read
@@ -865,7 +865,7 @@ export default function Home() {
 
         {/* Genre Breakdown */}
         {stats.totalBooks > 0 && (
-          <section className="mb-10">
+          <section id="genre-breakdown" className="mb-10">
             <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
               🏷️ Genre Breakdown
             </h2>
@@ -912,7 +912,7 @@ export default function Home() {
 
         {/* Want to Read */}
         {wantToRead.length > 0 && (
-          <section className="mb-10">
+          <section id="want-to-read" className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 📚 Want to Read
