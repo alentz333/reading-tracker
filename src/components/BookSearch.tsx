@@ -53,6 +53,7 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
         pageCount: item.pageCount,
         isbn: item.isbn,
         publishedDate: item.publishedYear?.toString(),
+        description: item.description,
         status: 'want-to-read' as const,
         isPublic: true,
       }));

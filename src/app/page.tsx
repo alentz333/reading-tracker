@@ -294,6 +294,18 @@ export default function Home() {
     fetchNewDiscoverySuggestion(currentFingerprint, nextFeedback);
   };
 
+  const getShortBookSummary = (book: Book) => {
+    const summary = (book.description || '').replace(/\s+/g, ' ').trim();
+
+    if (!summary) {
+      return 'No summary available from Open Library yet for this title.';
+    }
+
+    return summary.length > 260
+      ? `${summary.slice(0, 257).trimEnd()}...`
+      : summary;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -560,6 +572,11 @@ export default function Home() {
                       <p className="text-xs text-white/35 mt-1">Published {newBookSuggestion.book.publishedYear}</p>
                     )}
                   </div>
+                </div>
+
+                <div className="mb-4 p-3 rounded-lg bg-white/5 border border-white/10">
+                  <p className="text-xs font-medium text-white/50 uppercase tracking-wide mb-1">Book Summary</p>
+                  <p className="text-sm text-white/75 leading-relaxed">{getShortBookSummary(newBookSuggestion.book)}</p>
                 </div>
 
                 <div className="mb-3">

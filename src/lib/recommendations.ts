@@ -38,6 +38,7 @@ interface SearchApiBook {
   isbn?: string;
   pageCount?: number;
   publishedYear?: number;
+  description?: string;
 }
 
 const TITLE_STOP_WORDS = new Set([
@@ -457,6 +458,7 @@ export async function suggestNewBookOutsideLibrary(
           isbn: candidate.isbn,
           olKey: candidate.key,
           publishedYear: candidate.publishedYear,
+          description: candidate.description,
           addedAt: new Date().toISOString(),
           source: 'openlibrary',
           isPublic: true,
