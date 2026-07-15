@@ -4,6 +4,13 @@ import { PREVIOUS_READ_NOTE_TAG } from '@/lib/previous-reads'
 
 const supabase = createClient()
 
+// getSession() reads the locally stored session (no network round trip),
+// unlike getUser() which hits the auth server on every call.
+async function getSessionUser() {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.user ?? null
+}
+
 // Map our Book type to Supabase user_books + books tables
 interface SupabaseBook {
   id: string
@@ -24,7 +31,6 @@ interface SupabaseBook {
     author: string | null
     isbn: string | null
     cover_url: string | null
-    description: string | null
     page_count: number | null
     published_date: string | null
     genres: string[] | null
@@ -161,7 +167,6 @@ const BOOK_SELECT = `
     author,
     isbn,
     cover_url,
-    description,
     page_count,
     published_date,
     genres
@@ -169,7 +174,7 @@ const BOOK_SELECT = `
 `
 
 export async function fetchBooks(): Promise<Book[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const { data, error } = await supabase
@@ -187,7 +192,7 @@ export async function fetchBooks(): Promise<Book[]> {
 }
 
 export async function addBookToSupabase(book: Book): Promise<Book | null> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   let bookId: string
@@ -280,7 +285,7 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
 }
 
 export async function updateBookInSupabase(id: string, updates: Partial<Book>): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return false
 
   const dbUpdates: Record<string, unknown> = {}
@@ -308,7 +313,7 @@ export async function updateBookInSupabase(id: string, updates: Partial<Book>): 
 }
 
 export async function deleteBookFromSupabase(id: string): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) return false
 
   const { error } = await supabase

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { BooksProvider } from "@/components/BooksProvider";
 
 export const metadata: Metadata = {
   title: "Shelf | Your Reading Life",
@@ -31,7 +32,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased min-h-screen pb-20 md:pb-0">
         <AuthProvider>
-          {children}
+          <BooksProvider>
+            {children}
+          </BooksProvider>
         </AuthProvider>
       </body>
     </html>
