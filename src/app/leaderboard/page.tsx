@@ -2,7 +2,6 @@
 
 import { useAuth } from '@/components/auth/AuthProvider';
 import Header from '@/components/Header';
-import { LevelBadge } from '@/components/gamification';
 import Link from 'next/link';
 
 // Placeholder - will be implemented with real data in Phase 5
@@ -48,15 +47,11 @@ export default function LeaderboardPage() {
             <ul className="space-y-2 text-sm text-white/50">
               <li className="flex items-center gap-2">
                 <span className="text-indigo-400">✓</span>
-                Weekly XP leaderboard
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-indigo-400">✓</span>
                 Books read this month
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-indigo-400">✓</span>
-                Longest streak competition
+                Most pages read
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-indigo-400">✓</span>

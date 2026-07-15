@@ -4,8 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useGamification } from '@/hooks/useGamification';
-import { LevelBadge, XPBar, XPPopup } from '@/components/gamification';
 
 interface HeaderProps {
   stats?: {
@@ -18,7 +16,6 @@ interface HeaderProps {
 
 export default function Header({ stats }: HeaderProps) {
   const { user, signOut, loading } = useAuth();
-  const { stats: gameStats, recentXP, loading: gameLoading } = useGamification();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -42,11 +39,6 @@ export default function Header({ stats }: HeaderProps) {
 
   return (
     <>
-      {/* XP Popup */}
-      {recentXP && (
-        <XPPopup amount={recentXP.amount} reason={recentXP.reason} />
-      )}
-      
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-[var(--color-bg)]/80 border-b border-[var(--glass-border)]">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -66,14 +58,8 @@ export default function Header({ stats }: HeaderProps) {
               >
                 Library
               </Link>
-              <Link 
-                href="/quests" 
-                className="text-sm text-white/60 hover:text-white transition-colors"
-              >
-                Quests
-              </Link>
-              <Link 
-                href="/clubs" 
+              <Link
+                href="/clubs"
                 className="text-sm text-white/60 hover:text-white transition-colors"
               >
                 Clubs
@@ -90,24 +76,10 @@ export default function Header({ stats }: HeaderProps) {
 
             {/* User Menu */}
             <div className="flex items-center gap-3">
-              {loading || gameLoading ? (
+              {loading ? (
                 <div className="w-8 h-8 skeleton rounded-full" />
               ) : user ? (
                 <div className="flex items-center gap-2 sm:gap-4">
-                  {/* Gamification Stats */}
-                  {gameStats && (
-                    <div className="flex items-center gap-2 sm:gap-3 mr-1">
-                      <span className="text-base sm:text-xl" aria-hidden="true">🏆</span>
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <LevelBadge level={gameStats.level} size="sm" />
-                        <span className="hidden sm:inline text-xs text-white/60 whitespace-nowrap">{gameStats.xp.toLocaleString()} XP</span>
-                        <div className="w-12 sm:w-20">
-                          <XPBar xp={gameStats.xp} level={gameStats.level} showLabel={false} size="sm" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
                   {/* Profile dropdown - Click to toggle */}
                   <div className="relative" ref={dropdownRef}>
                     <button 
@@ -124,15 +96,6 @@ export default function Header({ stats }: HeaderProps) {
                       <div className="absolute right-0 top-full mt-2 w-64 py-2 bg-[#1a1a1b] border border-white/10 rounded-xl shadow-2xl z-50">
                         <div className="px-4 py-3 border-b border-white/10">
                           <p className="text-sm text-white truncate font-medium">{user.email}</p>
-                          {gameStats && (
-                            <div className="mt-2">
-                              <div className="flex items-center justify-between text-xs text-white/60 mb-1">
-                                <span>Level {gameStats.level}</span>
-                                <span>{gameStats.xp.toLocaleString()} XP</span>
-                              </div>
-                              <XPBar xp={gameStats.xp} level={gameStats.level} showLabel={false} size="sm" />
-                            </div>
-                          )}
                         </div>
                         
                         <div className="py-1">
@@ -171,15 +134,8 @@ export default function Header({ stats }: HeaderProps) {
                           >
                             <span>🏆</span> Achievements
                           </Link>
-                          <Link 
-                            href="/quests" 
-                            onClick={() => setShowDropdown(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
-                          >
-                            <span>📜</span> Quests
-                          </Link>
-                          <Link 
-                            href="/clubs" 
+                          <Link
+                            href="/clubs"
                             onClick={() => setShowDropdown(false)}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                           >
@@ -226,14 +182,14 @@ export default function Header({ stats }: HeaderProps) {
             <span className="text-xl">📚</span>
             <span className="text-xs">Library</span>
           </Link>
-          <Link 
-            href="/quests" 
+          <Link
+            href="/stats"
             className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
-              pathname === '/quests' ? 'text-indigo-400' : 'text-white/50'
+              pathname === '/stats' ? 'text-indigo-400' : 'text-white/50'
             }`}
           >
-            <span className="text-xl">📜</span>
-            <span className="text-xs">Quests</span>
+            <span className="text-xl">📊</span>
+            <span className="text-xs">Stats</span>
           </Link>
           <Link 
             href="/clubs" 

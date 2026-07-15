@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
-import { useGamification } from '@/hooks/useGamification';
 import Header from '@/components/Header';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 import BookSearch from '@/components/BookSearch';
@@ -25,7 +24,6 @@ import {
 
 export default function Home() {
   const { books, loading, stats, addBook, updateBook, deleteBook } = useBooks();
-  const { onBookStarted, onBookFinished } = useGamification();
   const [showSearch, setShowSearch] = useState(false);
   const [finishingBook, setFinishingBook] = useState<string | null>(null);
   const [pendingRating, setPendingRating] = useState<number>(0);
@@ -80,11 +78,7 @@ export default function Home() {
     }
 
     const success = await addBook(bookToAdd);
-    
-    if (success && status === 'reading') {
-      await onBookStarted(book.id);
-    }
-    
+
     if (success) {
       setShowSearch(false);
     }
@@ -120,7 +114,6 @@ export default function Home() {
       rating: pendingRating || undefined,
       dateFinished: new Date().toISOString().split('T')[0]
     });
-    await onBookFinished(bookId);
     setFinishingBook(null);
     setPendingRating(0);
   };
@@ -203,7 +196,6 @@ export default function Home() {
     });
 
     if (success) {
-      await onBookStarted(nextSuggestion.book.id);
       closeSuggestionModal();
       return;
     }
