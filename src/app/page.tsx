@@ -317,7 +317,7 @@ export default function Home() {
           <div className="bg-[#1a1a1b] rounded-2xl max-w-md w-full p-6 border border-white/10">
             <div className="flex gap-4 mb-6">
               {editingBook.coverUrl ? (
-                <img 
+                <img loading="lazy" decoding="async" 
                   src={editingBook.coverUrl} 
                   alt={editingBook.title}
                   className="w-20 h-28 object-cover rounded-lg shadow-lg"
@@ -458,7 +458,7 @@ export default function Home() {
               <>
                 <div className="flex gap-4 mb-5">
                   {nextSuggestion.book.coverUrl ? (
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={nextSuggestion.book.coverUrl}
                       alt={nextSuggestion.book.title}
                       className="w-20 h-28 object-cover rounded-lg shadow-lg"
@@ -547,7 +547,7 @@ export default function Home() {
               <>
                 <div className="flex gap-4 mb-5">
                   {newBookSuggestion.book.coverUrl ? (
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={newBookSuggestion.book.coverUrl}
                       alt={newBookSuggestion.book.title}
                       className="w-20 h-28 object-cover rounded-lg shadow-lg"
@@ -726,7 +726,7 @@ export default function Home() {
                 <div key={book.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
                   <div className="flex gap-4">
                     {book.coverUrl ? (
-                      <img 
+                      <img loading="lazy" decoding="async" 
                         src={book.coverUrl} 
                         alt={book.title}
                         className="w-16 h-24 object-cover rounded-lg shadow-lg"
@@ -851,7 +851,7 @@ export default function Home() {
                 >
                   <div className="relative">
                     {book.coverUrl ? (
-                      <img 
+                      <img loading="lazy" decoding="async" 
                         src={book.coverUrl} 
                         alt={book.title}
                         className="w-full aspect-[2/3] object-cover rounded-lg shadow-lg group-hover:shadow-xl group-hover:ring-2 group-hover:ring-indigo-500 transition-all"
@@ -940,7 +940,7 @@ export default function Home() {
                 >
                   <div className="relative">
                     {book.coverUrl ? (
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={book.coverUrl}
                         alt={book.title}
                         className="w-full aspect-[2/3] object-cover rounded-lg shadow-md group-hover:shadow-lg group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 transition-all"

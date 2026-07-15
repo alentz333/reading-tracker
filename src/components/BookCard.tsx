@@ -62,7 +62,7 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
     return (
       <div className="group cursor-pointer" onClick={() => setShowDetails(true)}>
         {book.coverUrl ? (
-          <img 
+          <img loading="lazy" decoding="async" 
             src={book.coverUrl} 
             alt={book.title}
             className="book-cover w-full"
@@ -82,7 +82,7 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
       <div className="flex gap-4">
         {/* Cover */}
         {book.coverUrl ? (
-          <img
+          <img loading="lazy" decoding="async"
             src={book.coverUrl}
             alt={book.title}
             className="w-20 h-28 object-cover rounded-lg shadow-lg flex-shrink-0"

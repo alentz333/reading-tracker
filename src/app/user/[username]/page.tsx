@@ -144,7 +144,7 @@ export default function UserProfilePage() {
           <div className="flex items-start gap-6">
             {/* Avatar */}
             {profile?.avatar_url ? (
-              <img 
+              <img loading="lazy" decoding="async" 
                 src={profile.avatar_url} 
                 alt={profile.display_name || username}
                 className="w-24 h-24 rounded-full border-4 border-white/20"
@@ -212,7 +212,7 @@ export default function UserProfilePage() {
             {currentlyReading.map(book => (
               <div key={book.id} className="card p-4">
                 {book.cover_url ? (
-                  <img 
+                  <img loading="lazy" decoding="async" 
                     src={book.cover_url} 
                     alt={book.title}
                     className="w-full h-40 object-cover rounded mb-2"
@@ -243,7 +243,7 @@ export default function UserProfilePage() {
             {books.map(book => (
               <div key={book.id} className="card p-4 flex gap-4">
                 {book.cover_url ? (
-                  <img 
+                  <img loading="lazy" decoding="async" 
                     src={book.cover_url} 
                     alt={book.title}
                     className="w-16 h-24 object-cover rounded flex-shrink-0"

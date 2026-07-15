@@ -39,7 +39,9 @@ export async function GET(request: NextRequest) {
   
   try {
     const response = await fetch(
-      `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10&fields=key,title,author_name,cover_i,isbn,number_of_pages_median,first_publish_year,first_sentence`
+      `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10&fields=key,title,author_name,cover_i,isbn,number_of_pages_median,first_publish_year,first_sentence`,
+      // Open Library results are stable; cache per-query server-side for a day
+      { next: { revalidate: 86400 } }
     );
     
     if (!response.ok) {
@@ -61,7 +63,10 @@ export async function GET(request: NextRequest) {
       description: extractText(doc.first_sentence),
     }));
     
-    return NextResponse.json({ books });
+    return NextResponse.json(
+      { books },
+      { headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=86400' } }
+    );
   } catch (error) {
     console.error('Search error:', error);
     return NextResponse.json({ error: 'Search failed' }, { status: 500 });

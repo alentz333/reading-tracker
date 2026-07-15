@@ -155,7 +155,7 @@ export default function CreateClubPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-forest)]"
             />
             {coverUrl && (
-              <img src={coverUrl} alt="Preview" className="mt-2 w-32 h-32 object-cover rounded-lg" />
+              <img loading="lazy" decoding="async" src={coverUrl} alt="Preview" className="mt-2 w-32 h-32 object-cover rounded-lg" />
             )}
           </div>
 

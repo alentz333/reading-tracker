@@ -178,7 +178,7 @@ export default function AddBookToClubPage() {
                   className="w-full flex gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
                 >
                   {book.cover_i ? (
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={`https://covers.openlibrary.org/b/id/${book.cover_i}-S.jpg`}
                       alt=""
                       className="w-12 h-16 object-cover rounded"
@@ -205,7 +205,7 @@ export default function AddBookToClubPage() {
             {/* Selected Book */}
             <div className="flex gap-4 pb-4 border-b border-gray-100">
               {selectedBook.cover_i ? (
-                <img
+                <img loading="lazy" decoding="async"
                   src={`https://covers.openlibrary.org/b/id/${selectedBook.cover_i}-M.jpg`}
                   alt=""
                   className="w-20 h-28 object-cover rounded"

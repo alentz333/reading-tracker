@@ -314,7 +314,7 @@ export default function StatsPage() {
               {derivedStats.recentlyRead.map(book => (
                 <div key={book.id} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
                   {book.coverUrl ? (
-                    <img src={book.coverUrl} alt="" className="w-9 h-13 object-cover rounded shrink-0" />
+                    <img loading="lazy" decoding="async" src={book.coverUrl} alt="" className="w-9 h-13 object-cover rounded shrink-0" />
                   ) : (
                     <BookCoverPlaceholder title={book.title} className="w-9 h-13 rounded shrink-0" textClassName="text-[7px] line-clamp-3" />
                   )}

@@ -6,7 +6,7 @@ This file provides guidance for AI assistants (Claude and others) working with t
 
 ## Project Overview
 
-**Reading Tracker** is a full-stack web app for tracking personal reading, discovering new books, and participating in book clubs. It includes a gamification layer (XP, levels, achievements, streaks, quests) and social features (public profiles, book clubs).
+**Reading Tracker** is a full-stack web app for tracking personal reading, discovering new books, and participating in book clubs. It includes achievements and social features (public profiles, book clubs). The former XP/quests/streaks gamification layer was removed in July 2026 (its DB tables still exist but are unused).
 
 **Live stack:** Next.js 16 (App Router) · TypeScript 5 · Tailwind CSS 4 · Supabase (PostgreSQL + Auth) · Vercel
 
@@ -68,8 +68,7 @@ src/
 │   │   └── edit/page.tsx
 │   ├── user/[username]/page.tsx  # Public profile view
 │   ├── leaderboard/page.tsx
-│   ├── achievements/page.tsx
-│   └── quests/page.tsx
+│   └── achievements/page.tsx
 ├── components/
 │   ├── Header.tsx              # Navigation bar
 │   ├── BookCard.tsx            # Book display/interaction (status, rating, review)
@@ -78,18 +77,14 @@ src/
 │   ├── GoodreadsImport.tsx     # Goodreads CSV import
 │   ├── UserSearch.tsx          # User discovery
 │   ├── AuthModal.tsx           # Login/signup modal
-│   ├── auth/
-│   │   ├── AuthProvider.tsx    # Supabase auth context
-│   │   └── UserMenu.tsx        # User dropdown with logout
-│   └── gamification/
-│       ├── XPBar.tsx           # Level progress bar
-│       ├── LevelBadge.tsx      # Level display
-│       ├── StreakDisplay.tsx   # Reading streak
-│       ├── XPPopup.tsx         # Floating XP notification
-│       └── index.ts
+│   ├── BooksProvider.tsx       # Shared library state (single fetch, mounted in layout)
+│   ├── BookCoverPlaceholder.tsx # Title-on-gradient fallback when no cover art
+│   └── auth/
+│       ├── AuthProvider.tsx    # Supabase auth context
+│       └── UserMenu.tsx        # User dropdown with logout
 ├── hooks/
-│   ├── useBooks.ts             # Book CRUD + Supabase sync
-│   └── useGamification.ts      # XP, achievements, quests
+│   ├── useBooks.ts             # Alias for the BooksProvider context
+│   └── useAchievements.ts      # Achievement definitions + unlocks
 ├── lib/
 │   ├── storage.ts              # localStorage API (offline fallback)
 │   ├── previous-reads.ts       # Previous reads timeline logic
@@ -100,7 +95,7 @@ src/
 │       ├── server.ts           # Server-side Supabase client
 │       ├── middleware.ts       # Session refresh middleware
 │       ├── books.ts            # Book DB operations
-│       ├── gamification.ts     # Gamification DB operations
+│       ├── achievements.ts     # Achievement DB operations
 │       ├── guardedFetch.ts     # Prevents accidental root API calls
 │       └── types.ts            # Auto-generated DB types
 └── types/
@@ -108,8 +103,8 @@ src/
 supabase/
 └── migrations/
     ├── 001_initial_schema.sql  # Core tables
-    └── 003_gamification.sql   # XP, achievements, quests tables
-middleware.ts                   # Root middleware: session refresh on all routes
+    └── 003_gamification.sql   # Achievements tables (+ legacy XP/quests tables, now unused)
+middleware.ts                   # Root middleware: session refresh (skips /api/search, /api/identify)
 ```
 
 ---
@@ -169,17 +164,17 @@ Always support both paths when modifying book-related code.
 
 | Table | Key columns | Notes |
 |-------|-------------|-------|
-| `profiles` | `id` (FK to auth.users), `username`, `display_name`, `xp`, `level`, `streak` | One per user |
+| `profiles` | `id` (FK to auth.users), `username`, `display_name` | One per user (legacy xp/level/streak columns unused) |
 | `books` | `id`, `title`, `author`, `isbn`, `cover_url`, `page_count` | Shared catalog, deduplicated by ISBN |
 | `user_books` | `user_id`, `book_id`, `status`, `rating`, `progress`, `review`, `date_started`, `date_finished` | Per-user reading state |
 | `clubs` | `id`, `name`, `description`, `owner_id`, `is_private` | Book clubs |
 | `club_members` | `club_id`, `user_id`, `role` | `role`: `owner` \| `admin` \| `member` |
 | `club_books` | `club_id`, `book_id`, `status` | `status`: `upcoming` \| `current` \| `finished` |
-| `xp_events` | `user_id`, `amount`, `reason`, `book_id` | XP audit log |
-| `achievements` | `id`, `name`, `description`, `xp_reward`, `category` | Shared definitions |
+| `xp_events` | `user_id`, `amount`, `reason`, `book_id` | Legacy XP audit log (unused) |
+| `achievements` | `id`, `name`, `description`, `xp_reward`, `category` | Shared definitions (`xp_reward` no longer surfaced) |
 | `user_achievements` | `user_id`, `achievement_id`, `unlocked_at` | Per-user unlocks |
-| `quests` | `id`, `title`, `type`, `goal`, `xp_reward` | `type`: `daily` \| `weekly` |
-| `user_quests` | `user_id`, `quest_id`, `progress`, `completed_at` | Per-user quest tracking |
+| `quests` | `id`, `title`, `type`, `goal`, `xp_reward` | Legacy (unused) |
+| `user_quests` | `user_id`, `quest_id`, `progress`, `completed_at` | Legacy (unused) |
 | `reading_goals` | `user_id`, `type`, `target`, `year` | Reading targets |
 | `activities` | `user_id`, `type`, `book_id`, `data` | Social activity feed |
 
@@ -204,27 +199,13 @@ Row-Level Security (RLS) is enabled. Users can only read/write their own rows. P
 
 ---
 
-## Gamification System
+## Achievements
 
-XP is awarded through the `useGamification` hook and the functions in `src/lib/supabase/gamification.ts`.
+Achievements are the only remaining gamification feature (XP, levels, streaks, and quests were removed). Definitions live in the `achievements` table; unlocks in `user_achievements`.
 
-**XP rewards:**
-- Book finished: 100 XP
-- Review written: 25 XP
-- Daily reading streak: 10 XP/day
-- Quest completed: varies (25–100 XP)
-- Achievement unlocked: varies by achievement
-
-**Event pipeline (follow this order):**
-```typescript
-await onBookFinished(book, rating)
-  // internally calls:
-  → awardXP(100, 'book_finished', bookId)
-  → checkAndUnlockAchievements()
-  → updateStreak()
-```
-
-**Levels** are calculated from total XP via `calculateLevel(xp)` in `gamification.ts`. There are 10+ named levels from "Bookworm Egg" to "Grand Reader".
+- `src/lib/supabase/achievements.ts` — fetch definitions/unlocks and `checkAndUnlockAchievements()`, which computes progress (books read, reviews, ratings, clubs, page counts, fast finishes) in one parallel query batch and inserts any newly earned unlocks.
+- `src/hooks/useAchievements.ts` — page-level hook used by `/achievements`; runs the check once, then loads definitions + unlocks.
+- Achievements whose requirements depended on the retired XP event log (`early_reading`, `late_reading`) or streaks can no longer be newly earned; existing unlocks still display.
 
 ---
 
@@ -234,8 +215,8 @@ await onBookFinished(book, rating)
 - Pages live in `src/app/**` and handle data fetching via hooks.
 - Components in `src/components/` are **presentational** — they accept data and callback props. Avoid fetching data directly inside components.
 - Component filenames: **PascalCase** (`BookCard.tsx`)
-- Utility/lib filenames: **camelCase** (`fetchBooks`, `awardXP`)
-- Custom hooks: prefixed with `use` (`useBooks`, `useGamification`)
+- Utility/lib filenames: **camelCase** (`fetchBooks`, `checkAndUnlockAchievements`)
+- Custom hooks: prefixed with `use` (`useBooks`, `useAchievements`)
 
 ### Styling
 - Tailwind CSS 4 utility classes only — no CSS modules, no `styled-components`.
@@ -293,9 +274,9 @@ See `DEPLOY.md` for the full step-by-step guide.
 2. Add TypeScript types to `src/lib/supabase/types.ts`.
 3. Add CRUD functions to the appropriate file in `src/lib/supabase/`.
 
-### Adding a new gamification event
-1. Call `gainXP(amount, reason)` from `useGamification` at the event trigger.
-2. Optionally add an achievement to the DB and update `checkAndUnlockAchievements()` in `src/lib/supabase/gamification.ts`.
+### Adding a new achievement
+1. Insert the definition into the `achievements` table with a `requirement` JSON.
+2. If it needs a new progress signal, extend `checkAndUnlockAchievements()` in `src/lib/supabase/achievements.ts`.
 
 ### Modifying book status
 - Always go through `useBooks` hook methods (`addBook`, `updateBook`, `deleteBook`).
@@ -308,9 +289,9 @@ See `DEPLOY.md` for the full step-by-step guide.
 | File | Why it matters |
 |------|---------------|
 | `src/lib/supabase/guardedFetch.ts` | Prevents accidental calls to the Supabase REST root — do not bypass |
-| `middleware.ts` | Refreshes Supabase auth sessions on every request — runs on all routes |
-| `src/app/layout.tsx` | Root layout wraps everything in `<AuthProvider>` — auth context is available site-wide |
-| `src/hooks/useBooks.ts` | Central book state manager — all book mutations go through here |
+| `middleware.ts` | Refreshes Supabase auth sessions on every request (except /api/search and /api/identify) |
+| `src/app/layout.tsx` | Root layout wraps everything in `<AuthProvider>` + `<BooksProvider>` — auth and library state are site-wide |
+| `src/components/BooksProvider.tsx` | Central book state manager — all book mutations go through here (via the `useBooks` alias) |
 | `src/lib/supabase/books.ts` | All direct Supabase book/user_books queries live here |
-| `src/lib/supabase/gamification.ts` | All XP, achievement, quest, and streak logic lives here |
+| `src/lib/supabase/achievements.ts` | Achievement definitions, unlocks, and requirement checks live here |
 | `supabase/migrations/` | Schema history — do not edit existing migration files |

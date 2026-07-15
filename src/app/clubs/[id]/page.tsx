@@ -340,7 +340,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
           
           <div className="flex gap-6 items-start">
             {club.cover_url ? (
-              <img src={club.cover_url} alt="" className="w-24 h-24 rounded-lg object-cover" />
+              <img loading="lazy" decoding="async" src={club.cover_url} alt="" className="w-24 h-24 rounded-lg object-cover" />
             ) : (
               <div className="w-24 h-24 rounded-lg bg-white/10 flex items-center justify-center text-4xl">
                 📚
@@ -432,7 +432,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
             {currentBook ? (
               <div className="card p-4 flex gap-4">
                 {currentBook.book.cover_url ? (
-                  <img src={currentBook.book.cover_url} alt="" className="w-20 h-28 object-cover rounded" />
+                  <img loading="lazy" decoding="async" src={currentBook.book.cover_url} alt="" className="w-20 h-28 object-cover rounded" />
                 ) : (
                   <BookCoverPlaceholder title={currentBook.book.title} className="w-20 h-28 rounded flex-shrink-0" />
                 )}
@@ -482,7 +482,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                 {upcomingBooks.map((book) => (
                   <div key={book.id} className="card p-3 flex gap-3 items-center">
                     {book.book.cover_url ? (
-                      <img src={book.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
+                      <img loading="lazy" decoding="async" src={book.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
                     ) : (
                       <BookCoverPlaceholder title={book.book.title} className="w-12 h-16 rounded flex-shrink-0" textClassName="text-[8px] line-clamp-3" />
                     )}
@@ -522,7 +522,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                 {finishedBooks.map((book) => (
                   <div key={book.id} className="card p-3 flex gap-3 items-center opacity-70">
                     {book.book.cover_url ? (
-                      <img src={book.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
+                      <img loading="lazy" decoding="async" src={book.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
                     ) : (
                       <BookCoverPlaceholder title={book.book.title} className="w-12 h-16 rounded flex-shrink-0" textClassName="text-[8px] line-clamp-3" />
                     )}
@@ -546,7 +546,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
             {members.map((member) => (
               <div key={member.id} className="flex items-center gap-3">
                 {member.profile.avatar_url ? (
-                  <img src={member.profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                  <img loading="lazy" decoding="async" src={member.profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-[var(--color-forest)] flex items-center justify-center text-white text-sm">
                     {(member.profile.display_name || member.profile.username || '?')[0].toUpperCase()}
@@ -613,7 +613,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               {searchResults.map((result) => (
                 <div key={result.key} className="flex gap-3 p-3 border border-gray-200 rounded-lg">
                   {result.cover_i ? (
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={`https://covers.openlibrary.org/b/id/${result.cover_i}-M.jpg`}
                       alt=""
                       className="w-12 h-16 object-cover rounded"

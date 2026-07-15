@@ -192,7 +192,7 @@ export default function ClubsPage() {
                   className="card p-4 hover:shadow-md transition-shadow flex gap-4"
                 >
                   {club.cover_url ? (
-                    <img src={club.cover_url} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                    <img loading="lazy" decoding="async" src={club.cover_url} alt="" className="w-16 h-16 rounded-lg object-cover" />
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-[var(--color-forest)] flex items-center justify-center text-white text-2xl">
                       📚
@@ -238,7 +238,7 @@ export default function ClubsPage() {
                   className="card p-4 hover:shadow-md transition-shadow flex gap-4"
                 >
                   {club.cover_url ? (
-                    <img src={club.cover_url} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                    <img loading="lazy" decoding="async" src={club.cover_url} alt="" className="w-16 h-16 rounded-lg object-cover" />
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-[var(--color-forest)] flex items-center justify-center text-white text-2xl">
                       📚

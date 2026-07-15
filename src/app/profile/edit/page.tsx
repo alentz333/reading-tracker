@@ -124,7 +124,7 @@ export default function EditProfilePage() {
           {/* Avatar Preview */}
           <div className="flex items-center gap-4">
             {avatarUrl ? (
-              <img 
+              <img loading="lazy" decoding="async" 
                 src={avatarUrl} 
                 alt="Avatar preview"
                 className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"

@@ -179,7 +179,7 @@ export default function CameraScanner({ onAddBook, onClose }: CameraScannerProps
       {mode === 'preview' && capturedImage && (
         <div className="flex-1 flex flex-col items-center justify-center p-4">
           <div className="w-full max-w-md aspect-[3/4] rounded-lg overflow-hidden">
-            <img src={capturedImage} alt="Captured" className="w-full h-full object-cover" />
+            <img loading="lazy" decoding="async" src={capturedImage} alt="Captured" className="w-full h-full object-cover" />
           </div>
           
           {error && (
@@ -224,7 +224,7 @@ export default function CameraScanner({ onAddBook, onClose }: CameraScannerProps
                 {searchResults.map((result, i) => (
                   <div key={i} className="bg-white rounded-lg p-3 flex gap-3">
                     {result.coverUrl ? (
-                      <img src={result.coverUrl} alt="" className="w-12 h-16 object-cover rounded" />
+                      <img loading="lazy" decoding="async" src={result.coverUrl} alt="" className="w-12 h-16 object-cover rounded" />
                     ) : (
                       <BookCoverPlaceholder title={result.title} className="w-12 h-16 rounded" textClassName="text-[8px] line-clamp-3" />
                     )}

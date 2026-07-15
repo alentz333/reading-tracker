@@ -421,17 +421,28 @@ export async function suggestNewBookOutsideLibrary(
     fingerprint: string;
   }> = [];
 
+  // Fetch all seed queries in parallel; results are processed in seed order
+  // below so candidate priority stays deterministic.
+  const seedResults = await Promise.all(
+    seeds.map(async (seed) => {
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(seed.query)}`);
+        if (!response.ok) return [];
+        const payload = (await response.json()) as { books?: SearchApiBook[] };
+        return payload.books || [];
+      } catch (error) {
+        console.error('Recommendation search failed for query:', seed.query, error);
+        return [];
+      }
+    })
+  );
+
   for (let seedIndex = 0; seedIndex < seeds.length; seedIndex++) {
+    if (discoveredCandidates.length >= 24) break;
+
     const seed = seeds[seedIndex];
 
-    try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(seed.query)}`);
-      if (!response.ok) continue;
-
-      const payload = (await response.json()) as { books?: SearchApiBook[] };
-      const candidates = payload.books || [];
-
-      candidates.forEach((candidate) => {
+    seedResults[seedIndex].forEach((candidate) => {
         const candidateFingerprint = getBookFingerprint(candidate.title, candidate.author);
         const isbnKey = normalizeToken(candidate.isbn);
         const olKey = normalizeToken(candidate.key);
@@ -472,11 +483,6 @@ export async function suggestNewBookOutsideLibrary(
           fingerprint: candidateFingerprint,
         });
       });
-
-      if (discoveredCandidates.length >= 24) break;
-    } catch (error) {
-      console.error('Recommendation search failed for query:', seed.query, error);
-    }
   }
 
   if (discoveredCandidates.length === 0) {

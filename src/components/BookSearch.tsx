@@ -122,7 +122,7 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
               >
                 {/* Book Cover */}
                 {book.coverUrl ? (
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={book.coverUrl}
                     alt={book.title}
                     className="w-12 h-18 object-cover rounded shadow-sm flex-shrink-0"

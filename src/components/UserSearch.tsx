@@ -102,7 +102,7 @@ export default function UserSearch() {
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
                 >
                   {user.avatar_url ? (
-                    <img
+                    <img loading="lazy" decoding="async"
                       src={user.avatar_url}
                       alt=""
                       className="w-8 h-8 rounded-full object-cover"
