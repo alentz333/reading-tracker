@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
+import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 import Link from 'next/link';
 import { getBookReadYear } from '@/lib/storage';
 
@@ -315,7 +316,7 @@ export default function StatsPage() {
                   {book.coverUrl ? (
                     <img src={book.coverUrl} alt="" className="w-9 h-13 object-cover rounded shrink-0" />
                   ) : (
-                    <div className="w-9 h-13 bg-white/5 rounded flex items-center justify-center text-lg shrink-0">📚</div>
+                    <BookCoverPlaceholder title={book.title} className="w-9 h-13 rounded shrink-0" textClassName="text-[7px] line-clamp-3" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-medium truncate">{book.title}</p>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Book, ReadingStatus } from '@/types/book';
+import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 
 interface BookCardProps {
   book: Book;
@@ -67,7 +68,7 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
             className="book-cover w-full"
           />
         ) : (
-          <div className="book-cover-placeholder w-full">📖</div>
+          <BookCoverPlaceholder title={book.title} className="w-full aspect-[2/3] rounded-lg" textClassName="text-xs line-clamp-5" />
         )}
         <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <p className="text-xs text-white truncate">{book.title}</p>
@@ -87,7 +88,7 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
             className="w-20 h-28 object-cover rounded-lg shadow-lg flex-shrink-0"
           />
         ) : (
-          <div className="w-20 h-28 book-cover-placeholder flex-shrink-0 text-2xl">📖</div>
+          <BookCoverPlaceholder title={book.title} className="w-20 h-28 rounded-lg flex-shrink-0" />
         )}
         
         {/* Info */}

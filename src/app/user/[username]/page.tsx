@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Book } from '@/types/book'
+import BookCoverPlaceholder from '@/components/BookCoverPlaceholder'
 import Link from 'next/link'
 import { useAuth } from '@/components/auth/AuthProvider'
 
@@ -217,9 +218,7 @@ export default function UserProfilePage() {
                     className="w-full h-40 object-cover rounded mb-2"
                   />
                 ) : (
-                  <div className="w-full h-40 bg-gray-200 rounded mb-2 flex items-center justify-center text-gray-400">
-                    📚
-                  </div>
+                  <BookCoverPlaceholder title={book.title} className="w-full h-40 rounded mb-2" textClassName="text-sm line-clamp-4" />
                 )}
                 <h3 className="font-medium text-sm text-[var(--color-forest)] line-clamp-2">{book.title}</h3>
                 <p className="text-xs text-gray-500">{book.author}</p>
@@ -250,9 +249,7 @@ export default function UserProfilePage() {
                     className="w-16 h-24 object-cover rounded flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-16 h-24 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center text-gray-400">
-                    📖
-                  </div>
+                  <BookCoverPlaceholder title={book.title} className="w-16 h-24 rounded flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-[var(--color-forest)] line-clamp-1">{book.title}</h3>

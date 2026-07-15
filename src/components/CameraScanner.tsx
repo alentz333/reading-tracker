@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { Book, ReadingStatus } from '@/types/book';
+import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 import { generateId } from '@/lib/storage';
 
 interface CameraScannerProps {
@@ -225,7 +226,7 @@ export default function CameraScanner({ onAddBook, onClose }: CameraScannerProps
                     {result.coverUrl ? (
                       <img src={result.coverUrl} alt="" className="w-12 h-16 object-cover rounded" />
                     ) : (
-                      <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center">📖</div>
+                      <BookCoverPlaceholder title={result.title} className="w-12 h-16 rounded" textClassName="text-[8px] line-clamp-3" />
                     )}
                     <div className="flex-1">
                       <p className="font-medium text-sm">{result.title}</p>

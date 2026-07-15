@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Book, ReadingStatus } from '@/types/book';
+import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 
 interface BookSearchProps {
   onBookSelect: (book: Book, status?: ReadingStatus) => void;
@@ -127,9 +128,7 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
                     className="w-12 h-18 object-cover rounded shadow-sm flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-12 h-18 bg-gradient-to-br from-indigo-500 to-purple-600 rounded flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-sm">📖</span>
-                  </div>
+                  <BookCoverPlaceholder title={book.title} className="w-12 h-18 rounded flex-shrink-0" textClassName="text-[8px] line-clamp-3" />
                 )}
                 
                 {/* Book Info */}

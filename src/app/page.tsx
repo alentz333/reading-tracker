@@ -6,6 +6,7 @@ import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
 import { useGamification } from '@/hooks/useGamification';
 import Header from '@/components/Header';
+import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 import BookSearch from '@/components/BookSearch';
 import { isPreviousReadBook } from '@/lib/previous-reads';
 import { getActiveReadBooksThisYear } from '@/lib/storage';
@@ -330,7 +331,7 @@ export default function Home() {
                   className="w-20 h-28 object-cover rounded-lg shadow-lg"
                 />
               ) : (
-                <div className="w-20 h-28 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-2xl">📖</div>
+                <BookCoverPlaceholder title={editingBook.title} className="w-20 h-28 rounded-lg flex-shrink-0" />
               )}
               <div>
                 <h3 className="font-semibold text-white text-lg">{editingBook.title}</h3>
@@ -471,7 +472,7 @@ export default function Home() {
                       className="w-20 h-28 object-cover rounded-lg shadow-lg"
                     />
                   ) : (
-                    <div className="w-20 h-28 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-2xl">📖</div>
+                    <BookCoverPlaceholder title={nextSuggestion.book.title} className="w-20 h-28 rounded-lg flex-shrink-0" />
                   )}
                   <div>
                     <h4 className="text-white font-semibold leading-snug">{nextSuggestion.book.title}</h4>
@@ -560,7 +561,7 @@ export default function Home() {
                       className="w-20 h-28 object-cover rounded-lg shadow-lg"
                     />
                   ) : (
-                    <div className="w-20 h-28 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-lg flex items-center justify-center text-2xl">📘</div>
+                    <BookCoverPlaceholder title={newBookSuggestion.book.title} className="w-20 h-28 rounded-lg flex-shrink-0" />
                   )}
                   <div>
                     <h4 className="text-white font-semibold leading-snug">{newBookSuggestion.book.title}</h4>
@@ -739,7 +740,7 @@ export default function Home() {
                         className="w-16 h-24 object-cover rounded-lg shadow-lg"
                       />
                     ) : (
-                      <div className="w-16 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-2xl">📖</div>
+                      <BookCoverPlaceholder title={book.title} className="w-16 h-24 rounded-lg flex-shrink-0" />
                     )}
                     <div className="flex-1">
                       <h3 className="font-semibold text-white">{book.title}</h3>
@@ -864,7 +865,7 @@ export default function Home() {
                         className="w-full aspect-[2/3] object-cover rounded-lg shadow-lg group-hover:shadow-xl group-hover:ring-2 group-hover:ring-indigo-500 transition-all"
                       />
                     ) : (
-                      <div className="w-full aspect-[2/3] bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-3xl group-hover:ring-2 group-hover:ring-indigo-500 transition-all">📖</div>
+                      <BookCoverPlaceholder title={book.title} className="w-full aspect-[2/3] rounded-lg group-hover:ring-2 group-hover:ring-indigo-500 transition-all" textClassName="text-xs line-clamp-5" />
                     )}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 rounded-lg flex items-center justify-center transition-all">
                       <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">Edit</span>
@@ -953,7 +954,7 @@ export default function Home() {
                         className="w-full aspect-[2/3] object-cover rounded-lg shadow-md group-hover:shadow-lg group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 transition-all"
                       />
                     ) : (
-                      <div className="w-full aspect-[2/3] bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center text-2xl group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 transition-all">📖</div>
+                      <BookCoverPlaceholder title={book.title} className="w-full aspect-[2/3] rounded-lg group-hover:scale-105 group-hover:ring-2 group-hover:ring-indigo-500 transition-all" textClassName="text-xs line-clamp-5" />
                     )}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 rounded-lg flex items-center justify-center transition-all">
                       <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-medium">Update Status</span>

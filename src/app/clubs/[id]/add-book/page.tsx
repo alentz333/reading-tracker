@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/auth/AuthProvider'
+import BookCoverPlaceholder from '@/components/BookCoverPlaceholder'
 import Link from 'next/link'
 
 interface SearchResult {
@@ -183,7 +184,7 @@ export default function AddBookToClubPage() {
                       className="w-12 h-16 object-cover rounded"
                     />
                   ) : (
-                    <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center">📚</div>
+                    <BookCoverPlaceholder title={book.title} className="w-12 h-16 rounded flex-shrink-0" textClassName="text-[8px] line-clamp-3" />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-[var(--color-forest)] line-clamp-1">{book.title}</div>
@@ -210,7 +211,7 @@ export default function AddBookToClubPage() {
                   className="w-20 h-28 object-cover rounded"
                 />
               ) : (
-                <div className="w-20 h-28 bg-gray-200 rounded flex items-center justify-center text-2xl">📚</div>
+                <BookCoverPlaceholder title={selectedBook.title} className="w-20 h-28 rounded flex-shrink-0" />
               )}
               <div>
                 <h3 className="text-lg font-semibold text-[var(--color-forest)]">{selectedBook.title}</h3>

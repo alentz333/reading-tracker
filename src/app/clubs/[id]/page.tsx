@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/auth/AuthProvider'
+import BookCoverPlaceholder from '@/components/BookCoverPlaceholder'
 import Link from 'next/link'
 
 interface Club {
@@ -433,7 +434,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                 {currentBook.book.cover_url ? (
                   <img src={currentBook.book.cover_url} alt="" className="w-20 h-28 object-cover rounded" />
                 ) : (
-                  <div className="w-20 h-28 bg-gray-200 rounded flex items-center justify-center">📕</div>
+                  <BookCoverPlaceholder title={currentBook.book.title} className="w-20 h-28 rounded flex-shrink-0" />
                 )}
                 <div className="flex-1">
                   <h3 className="font-semibold text-[var(--color-forest)]">{currentBook.book.title}</h3>
@@ -483,7 +484,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                     {book.book.cover_url ? (
                       <img src={book.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
                     ) : (
-                      <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center text-sm">📕</div>
+                      <BookCoverPlaceholder title={book.book.title} className="w-12 h-16 rounded flex-shrink-0" textClassName="text-[8px] line-clamp-3" />
                     )}
                     <div className="flex-1">
                       <h3 className="font-medium text-[var(--color-forest)]">{book.book.title}</h3>
@@ -523,7 +524,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                     {book.book.cover_url ? (
                       <img src={book.book.cover_url} alt="" className="w-12 h-16 object-cover rounded" />
                     ) : (
-                      <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center text-sm">📕</div>
+                      <BookCoverPlaceholder title={book.book.title} className="w-12 h-16 rounded flex-shrink-0" textClassName="text-[8px] line-clamp-3" />
                     )}
                     <div className="flex-1">
                       <h3 className="font-medium text-[var(--color-forest)]">{book.book.title}</h3>
