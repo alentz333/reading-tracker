@@ -40,7 +40,8 @@ Fill `.env.local` with real values:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-OPENAI_API_KEY=... # optional
+OPENAI_API_KEY=... # optional (camera scanning + summary emails)
+RESEND_API_KEY=... # optional (finish-summary emails)
 ```
 
 Start dev server:
@@ -68,6 +69,7 @@ If needed, add env vars to Vercel:
 vercel env add NEXT_PUBLIC_SUPABASE_URL
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
 vercel env add OPENAI_API_KEY
+vercel env add RESEND_API_KEY
 ```
 
 ---

@@ -23,14 +23,16 @@ import {
 } from '@/lib/discovery-feedback';
 
 export default function Home() {
-  const { books, loading, stats, addBook, updateBook, deleteBook } = useBooks();
+  const { books, loading, stats, addBook, updateBook, deleteBook, isAuthenticated } = useBooks();
   const [showSearch, setShowSearch] = useState(false);
   const [finishingBook, setFinishingBook] = useState<string | null>(null);
   const [pendingRating, setPendingRating] = useState<number>(0);
+  const [pendingEmailSummary, setPendingEmailSummary] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [editStatus, setEditStatus] = useState<ReadingStatus>('read');
   const [editRating, setEditRating] = useState<number>(0);
   const [editReview, setEditReview] = useState<string>('');
+  const [editEmailSummary, setEditEmailSummary] = useState(false);
   const [localProgress, setLocalProgress] = useState<Record<string, number>>({});
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   const [nextSuggestion, setNextSuggestion] = useState<NextReadSuggestion | null>(null);
@@ -101,17 +103,19 @@ export default function Home() {
     return localProgress[book.id] ?? book.progress ?? 0;
   };
 
-  const handleMarkAsRead = (bookId: string) => {
-    setFinishingBook(bookId);
+  const handleMarkAsRead = (book: Book) => {
+    setFinishingBook(book.id);
     setPendingRating(0);
+    setPendingEmailSummary(!!book.emailSummaryOnFinish);
   };
 
   const confirmFinishBook = async (bookId: string) => {
-    await updateBook(bookId, { 
-      status: 'read', 
+    await updateBook(bookId, {
+      status: 'read',
       progress: 100,
       rating: pendingRating || undefined,
-      dateFinished: new Date().toISOString().split('T')[0]
+      dateFinished: new Date().toISOString().split('T')[0],
+      emailSummaryOnFinish: pendingEmailSummary,
     });
     setFinishingBook(null);
     setPendingRating(0);
@@ -126,6 +130,7 @@ export default function Home() {
     setEditStatus(book.status);
     setEditRating(book.rating || 0);
     setEditReview(book.review || '');
+    setEditEmailSummary(!!book.emailSummaryOnFinish);
   };
 
   const saveEditBook = async () => {
@@ -136,6 +141,7 @@ export default function Home() {
       status: editStatus,
       rating: editRating || undefined,
       review: editReview || undefined,
+      emailSummaryOnFinish: editEmailSummary,
     };
 
     if (editStatus === 'read') {
@@ -415,7 +421,31 @@ export default function Home() {
                 className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500"
               />
             </div>
-            
+
+            {/* Email summary toggle (signed-in only — the email goes to the account address) */}
+            {isAuthenticated && (
+              <div className="mb-6 flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
+                <div>
+                  <p className="text-sm text-white">📧 Email summary when finished</p>
+                  <p className="text-xs text-white/40 mt-0.5">Get a recap of this book by email when you mark it as read</p>
+                </div>
+                <button
+                  onClick={() => setEditEmailSummary(v => !v)}
+                  role="switch"
+                  aria-checked={editEmailSummary}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                    editEmailSummary ? 'bg-indigo-500' : 'bg-white/15'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                      editEmailSummary ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="space-y-3">
               <div className="flex gap-3">
@@ -793,6 +823,17 @@ export default function Home() {
                           </button>
                         )}
                       </div>
+                      {isAuthenticated && (
+                        <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={pendingEmailSummary}
+                            onChange={(e) => setPendingEmailSummary(e.target.checked)}
+                            className="accent-indigo-500 w-4 h-4"
+                          />
+                          <span className="text-sm text-white/70">📧 Email me a summary of this book</span>
+                        </label>
+                      )}
                       <div className="flex gap-2">
                         <button
                           onClick={() => confirmFinishBook(book.id)}
@@ -811,7 +852,7 @@ export default function Home() {
                   ) : (
                     <div className="mt-4 flex gap-2">
                       <button
-                        onClick={() => handleMarkAsRead(book.id)}
+                        onClick={() => handleMarkAsRead(book)}
                         className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg text-sm transition-colors"
                       >
                         ✓ Mark as Read

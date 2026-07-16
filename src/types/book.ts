@@ -23,6 +23,7 @@ export interface Book {
   source?: 'manual' | 'goodreads' | 'openlibrary' | 'google';
   isPublic?: boolean; // Default true - visible on profile
   isPreviousRead?: boolean; // Imported/added from Previous Reads timeline
+  emailSummaryOnFinish?: boolean; // Email a book summary when marked as read (signed-in only)
 }
 
 export interface OpenLibraryBook {

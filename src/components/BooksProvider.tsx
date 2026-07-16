@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Book, ReadingStats } from '@/types/book'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { fetchBooks, addBookToSupabase, updateBookInSupabase, deleteBookFromSupabase } from '@/lib/supabase/books'
@@ -27,6 +27,10 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Current books, readable inside stable callbacks without re-creating them
+  const booksRef = useRef(books)
+  booksRef.current = books
 
   const loadBooks = useCallback(async () => {
     setLoading(true)
@@ -72,7 +76,21 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       const success = await updateBookInSupabase(id, updates)
       if (success) {
+        const previous = booksRef.current.find(b => b.id === id)
         setBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b))
+
+        // Fire-and-forget: email the reader a summary when a book transitions
+        // to read and its email-summary toggle is on.
+        const becameRead = updates.status === 'read' && previous?.status !== 'read'
+        const emailEnabled = updates.emailSummaryOnFinish ?? previous?.emailSummaryOnFinish
+        if (becameRead && emailEnabled) {
+          fetch('/api/finish-summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userBookId: id }),
+          }).catch(err => console.error('Failed to request finish summary email:', err))
+        }
+
         return true
       }
       return false

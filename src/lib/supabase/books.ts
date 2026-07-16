@@ -24,6 +24,7 @@ interface SupabaseBook {
   notes: string | null
   is_favorite: boolean
   is_public: boolean
+  email_summary_on_finish: boolean
   created_at: string
   books: {
     id: string
@@ -144,6 +145,7 @@ function mapSupabaseToBook(sb: SupabaseBook): Book {
     addedAt: sb.created_at,
     source: 'manual',
     isPublic: sb.is_public,
+    emailSummaryOnFinish: sb.email_summary_on_finish,
     isPreviousRead: isTaggedPreviousRead || isLegacyPreviousRead,
   }
 }
@@ -160,6 +162,7 @@ const BOOK_SELECT = `
   notes,
   is_favorite,
   is_public,
+  email_summary_on_finish,
   created_at,
   books (
     id,
@@ -272,6 +275,7 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
       rating: book.rating,
       review: book.review,
       notes: book.isPreviousRead ? PREVIOUS_READ_NOTE_TAG : null,
+      email_summary_on_finish: book.emailSummaryOnFinish ?? false,
     })
     .select(BOOK_SELECT)
     .single()
@@ -297,6 +301,7 @@ export async function updateBookInSupabase(id: string, updates: Partial<Book>): 
   if ('dateStarted' in updates) dbUpdates.started_at = updates.dateStarted ?? null
   if ('dateFinished' in updates) dbUpdates.finished_at = updates.dateFinished ?? null
   if ('isPublic' in updates) dbUpdates.is_public = updates.isPublic
+  if ('emailSummaryOnFinish' in updates) dbUpdates.email_summary_on_finish = updates.emailSummaryOnFinish ?? false
 
   const { error } = await supabase
     .from('user_books')
