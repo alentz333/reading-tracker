@@ -106,6 +106,7 @@ function mapStatusToDb(status: ReadingStatus): string {
     'read': 'read',
     'reading': 'reading',
     'want-to-read': 'want_to_read',
+    'dnf': 'dnf',
   }
   return map[status] || 'want_to_read'
 }
@@ -115,7 +116,7 @@ function mapStatusFromDb(status: string): ReadingStatus {
     'read': 'read',
     'reading': 'reading',
     'want_to_read': 'want-to-read',
-    'dnf': 'read', // Map DNF to read for simplicity
+    'dnf': 'dnf',
   }
   return map[status] || 'want-to-read'
 }

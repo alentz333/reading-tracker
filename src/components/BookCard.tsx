@@ -20,6 +20,7 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
     'read': { label: 'Read', class: 'status-read', emoji: '✅' },
     'reading': { label: 'Reading', class: 'status-reading', emoji: '📖' },
     'want-to-read': { label: 'Want to Read', class: 'status-want', emoji: '📚' },
+    'dnf': { label: 'Did Not Finish', class: 'status-dnf', emoji: '🚫' },
   };
 
   const handleStatusChange = (newStatus: ReadingStatus) => {
@@ -119,7 +120,7 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
           )}
           
           {/* Star Rating */}
-          {book.status === 'read' && (
+          {(book.status === 'read' || book.status === 'dnf') && (
             <div className="star-rating mt-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -164,7 +165,7 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
               Change Status
             </label>
             <div className="flex gap-2 flex-wrap">
-              {(['want-to-read', 'reading', 'read'] as ReadingStatus[]).map((status) => (
+              {(['want-to-read', 'reading', 'read', 'dnf'] as ReadingStatus[]).map((status) => (
                 <button
                   key={status}
                   onClick={() => handleStatusChange(status)}
@@ -215,7 +216,7 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
           </div>
           
           {/* Review */}
-          {book.status === 'read' && (
+          {(book.status === 'read' || book.status === 'dnf') && (
             <div className="mb-4">
               <label className="text-xs font-medium text-white/40 uppercase tracking-wider block mb-2">
                 Your Review

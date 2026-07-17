@@ -55,6 +55,7 @@ export default function GoodreadsImport({ onImport }: GoodreadsImportProps) {
     const s = shelf.toLowerCase();
     if (s === 'read') return 'read';
     if (s === 'currently-reading') return 'reading';
+    if (s === 'dnf' || s === 'did-not-finish' || s === 'abandoned') return 'dnf';
     return 'want-to-read';
   };
 

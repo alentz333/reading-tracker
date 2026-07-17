@@ -6,7 +6,7 @@ This file provides guidance for AI assistants (Claude and others) working with t
 
 ## Project Overview
 
-**Reading Tracker** is a full-stack web app for tracking personal reading, discovering new books, and participating in book clubs. It includes achievements and social features (public profiles, book clubs). The former XP/quests/streaks gamification layer was removed in July 2026 (its DB tables still exist but are unused).
+**Reading Tracker** (also called the **"Shelf" app** — Alex uses the two names interchangeably) is a full-stack web app for tracking personal reading, discovering new books, and participating in book clubs. It includes achievements and social features (public profiles, book clubs). The former XP/quests/streaks gamification layer was removed in July 2026 (its DB tables still exist but are unused).
 
 **Live stack:** Next.js 16 (App Router) · TypeScript 5 · Tailwind CSS 4 · Supabase (PostgreSQL + Auth) · Vercel
 
@@ -119,7 +119,7 @@ middleware.ts                   # Root middleware: session refresh (skips /api/s
 Defined in `src/types/book.ts`:
 
 ```typescript
-type ReadingStatus = 'read' | 'reading' | 'want-to-read';
+type ReadingStatus = 'read' | 'reading' | 'want-to-read' | 'dnf';
 
 interface Book {
   id: string;

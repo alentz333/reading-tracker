@@ -200,6 +200,11 @@ body {
   color: var(--color-want);
 }
 
+.status-dnf {
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

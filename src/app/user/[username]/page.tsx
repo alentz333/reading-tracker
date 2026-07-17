@@ -128,6 +128,7 @@ export default function UserProfilePage() {
       'reading': 'Currently Reading',
       'read': 'Read',
       'want_to_read': 'Want to Read',
+      'dnf': 'Did Not Finish',
     }
     return labels[status] || status
   }

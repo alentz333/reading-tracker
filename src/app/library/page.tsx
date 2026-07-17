@@ -9,7 +9,7 @@ import BookCard from '@/components/BookCard';
 import SortableBookGrid from '@/components/SortableBookGrid';
 import { isPreviousReadBook } from '@/lib/previous-reads';
 
-type FilterType = 'all' | 'reading' | 'read' | 'want';
+type FilterType = 'all' | 'reading' | 'read' | 'want' | 'dnf';
 type SortType = 'recent' | 'title' | 'author' | 'rating' | 'priority';
 
 function LibraryContent() {
@@ -43,6 +43,9 @@ function LibraryContent() {
         break;
       case 'want':
         filtered = filtered.filter(b => b.status === 'want-to-read');
+        break;
+      case 'dnf':
+        filtered = filtered.filter(b => b.status === 'dnf');
         break;
     }
 
@@ -85,6 +88,7 @@ function LibraryContent() {
     reading: '📖 Currently Reading',
     read: '✅ Read',
     want: '💫 Want to Read',
+    dnf: '🚫 Did Not Finish',
   };
 
   if (loading) {
@@ -186,7 +190,7 @@ function LibraryContent() {
             <div className="empty-state-description">
               {filter === 'all'
                 ? 'Start by searching for books to add to your library'
-                : `No books in "${filterLabels[filter].replace(/📚|📖|✅|💫 /, '')}"`
+                : `No books in "${filterLabels[filter].replace(/📚|📖|✅|💫|🚫 /, '')}"`
               }
             </div>
             <Link href="/" className="btn btn-primary mt-4">
