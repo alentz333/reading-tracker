@@ -30,27 +30,46 @@ async function generateSummary(book: BookRow, apiKey: string): Promise<string | 
 
   const anthropic = new Anthropic({ apiKey })
 
-  try {
-    const response = await anthropic.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content:
-            `Write a summary of the book "${book.title}"${book.author ? ` by ${book.author}` : ''} ` +
-            `for a reader who has just finished it. Aim for 250-350 words. Cover the main plot or ` +
-            `argument, key themes, and one or two takeaways worth remembering. Spoilers are fine — ` +
-            `the reader has finished the book. Write in plain prose paragraphs with no headings or ` +
-            `bullet points. If you are not confident you know this specific book, say so in one ` +
-            `sentence and summarize what it appears to be about instead of inventing details.` +
-            context,
-        },
-      ],
-    })
+  const params: Anthropic.MessageCreateParamsNonStreaming = {
+    model: 'claude-haiku-4-5',
+    max_tokens: 2048,
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+    messages: [
+      {
+        role: 'user',
+        content:
+          `Write a summary of the book "${book.title}"${book.author ? ` by ${book.author}` : ''} ` +
+          `for a reader who has just finished it. Aim for 250-350 words. Cover the main plot or ` +
+          `argument, key themes, and one or two takeaways worth remembering. Spoilers are fine — ` +
+          `the reader has finished the book. Write in plain prose paragraphs with no headings or ` +
+          `bullet points. If you are not confident you know this specific book from training, ` +
+          `search the web for existing summaries, reviews, or the publisher's description and ` +
+          `base your summary on those instead. Never invent plot details; if you can't find ` +
+          `reliable information either, say so in one sentence and summarize what the book ` +
+          `appears to be about. The final response should be only the summary itself — no ` +
+          `preamble about searching or sources.` +
+          context,
+      },
+    ],
+  }
 
-    const textBlock = response.content.find(block => block.type === 'text')
-    const summary = textBlock?.text.trim()
+  try {
+    let response = await anthropic.messages.create(params)
+
+    // Server-side web search can pause a long tool loop; resume until done.
+    for (let i = 0; i < 3 && response.stop_reason === 'pause_turn'; i++) {
+      response = await anthropic.messages.create({
+        ...params,
+        messages: [...params.messages, { role: 'assistant', content: response.content }],
+      })
+    }
+
+    // Web search splits the answer across multiple text blocks (citations).
+    const summary = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map(block => block.text)
+      .join('')
+      .trim()
     return summary || null
   } catch (err) {
     console.error('Claude summary error:', err)

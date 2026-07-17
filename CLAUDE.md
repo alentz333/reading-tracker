@@ -200,7 +200,7 @@ Row-Level Security (RLS) is enabled. Users can only read/write their own rows. P
 | `/api/search` | GET | Proxy to Open Library search. Query param: `q`. Returns up to 10 books. |
 | `/api/identify` | POST | Body: `{ imageBase64: string }`. Uses GPT-4 Vision to identify book from cover photo. Returns `{ title, author }`. |
 | `/api/user/[username]/reading-export` | GET | Returns the user's full reading list as a CSV file. |
-| `/api/finish-summary` | POST | Body: `{ userBookId }`. If the book's `email_summary_on_finish` flag is set, generates a ~300-word summary (Claude, `claude-opus-4-8`) and emails it to the signed-in user via Resend. Triggered fire-and-forget from `BooksProvider.updateBook` when a book transitions to read. Needs `ANTHROPIC_API_KEY` + `RESEND_API_KEY`. |
+| `/api/finish-summary` | POST | Body: `{ userBookId }`. If the book's `email_summary_on_finish` flag is set, generates a ~300-word summary (Claude, `claude-haiku-4-5` + web search for books it doesn't know) and emails it to the signed-in user via Resend. Triggered fire-and-forget from `BooksProvider.updateBook` when a book transitions to read. Needs `ANTHROPIC_API_KEY` + `RESEND_API_KEY`. |
 | `/auth/callback` | GET | Supabase OAuth callback. Exchanges `code` for session, redirects to `/`. |
 
 ---
