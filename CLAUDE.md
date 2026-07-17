@@ -32,12 +32,13 @@ Create `.env.local` with:
 ```
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-project-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-OPENAI_API_KEY=<optional-for-camera-scanning-and-summary-emails>
+OPENAI_API_KEY=<optional-for-camera-scanning>
+ANTHROPIC_API_KEY=<optional-for-finish-summary-emails>
 RESEND_API_KEY=<optional-for-finish-summary-emails>
 SUMMARY_EMAIL_FROM=<optional-sender-override>
 ```
 
-The `OPENAI_API_KEY` is required for camera-based book cover scanning (`/api/identify`) and for finish-summary emails (`/api/finish-summary`). `RESEND_API_KEY` is required only for the finish-summary emails; `SUMMARY_EMAIL_FROM` defaults to `Shelf <onboarding@resend.dev>`.
+The `OPENAI_API_KEY` is required for camera-based book cover scanning (`/api/identify`). `ANTHROPIC_API_KEY` (Claude) and `RESEND_API_KEY` are required only for the finish-summary emails (`/api/finish-summary`); `SUMMARY_EMAIL_FROM` defaults to `Shelf <onboarding@resend.dev>`.
 
 ---
 
@@ -199,7 +200,7 @@ Row-Level Security (RLS) is enabled. Users can only read/write their own rows. P
 | `/api/search` | GET | Proxy to Open Library search. Query param: `q`. Returns up to 10 books. |
 | `/api/identify` | POST | Body: `{ imageBase64: string }`. Uses GPT-4 Vision to identify book from cover photo. Returns `{ title, author }`. |
 | `/api/user/[username]/reading-export` | GET | Returns the user's full reading list as a CSV file. |
-| `/api/finish-summary` | POST | Body: `{ userBookId }`. If the book's `email_summary_on_finish` flag is set, generates a ~300-word summary (OpenAI) and emails it to the signed-in user via Resend. Triggered fire-and-forget from `BooksProvider.updateBook` when a book transitions to read. Needs `OPENAI_API_KEY` + `RESEND_API_KEY`. |
+| `/api/finish-summary` | POST | Body: `{ userBookId }`. If the book's `email_summary_on_finish` flag is set, generates a ~300-word summary (Claude, `claude-opus-4-8`) and emails it to the signed-in user via Resend. Triggered fire-and-forget from `BooksProvider.updateBook` when a book transitions to read. Needs `ANTHROPIC_API_KEY` + `RESEND_API_KEY`. |
 | `/auth/callback` | GET | Supabase OAuth callback. Exchanges `code` for session, redirects to `/`. |
 
 ---
@@ -257,7 +258,8 @@ Deployment is to **Vercel** with Supabase as the backend.
 2. Required environment variables in Vercel dashboard:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `OPENAI_API_KEY` (optional)
+   - `OPENAI_API_KEY` (optional, camera scanning)
+   - `ANTHROPIC_API_KEY` (optional, finish-summary emails)
    - `RESEND_API_KEY` (optional, finish-summary emails)
 3. In Supabase Auth settings, configure:
    - **Site URL:** `https://your-app.vercel.app`

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 
 interface BookRow {
@@ -27,14 +28,12 @@ async function generateSummary(book: BookRow, apiKey: string): Promise<string | 
     ? `\n\nFor reference, here is a short description of the book: ${book.description}`
     : ''
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
+  const anthropic = new Anthropic({ apiKey })
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 1024,
       messages: [
         {
           role: 'user',
@@ -48,19 +47,15 @@ async function generateSummary(book: BookRow, apiKey: string): Promise<string | 
             context,
         },
       ],
-      max_tokens: 700,
-      temperature: 0.4,
-    }),
-  })
+    })
 
-  if (!response.ok) {
-    console.error('OpenAI summary error:', response.status, await response.text())
+    const textBlock = response.content.find(block => block.type === 'text')
+    const summary = textBlock?.text.trim()
+    return summary || null
+  } catch (err) {
+    console.error('Claude summary error:', err)
     return null
   }
-
-  const data = await response.json()
-  const summary = data.choices?.[0]?.message?.content?.trim()
-  return summary || null
 }
 
 export async function POST(request: NextRequest) {
@@ -98,10 +93,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ skipped: 'Email summary is not enabled for this book' })
   }
 
-  const openaiKey = process.env.OPENAI_API_KEY
+  const anthropicKey = process.env.ANTHROPIC_API_KEY
   const resendKey = process.env.RESEND_API_KEY
-  if (!openaiKey || !resendKey) {
-    console.error('finish-summary: missing', openaiKey ? 'RESEND_API_KEY' : 'OPENAI_API_KEY')
+  if (!anthropicKey || !resendKey) {
+    console.error('finish-summary: missing', anthropicKey ? 'RESEND_API_KEY' : 'ANTHROPIC_API_KEY')
     return NextResponse.json({ error: 'Email summaries are not configured on the server' }, { status: 500 })
   }
 
@@ -110,7 +105,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Book details missing' }, { status: 404 })
   }
 
-  const summary = await generateSummary(book, openaiKey)
+  const summary = await generateSummary(book, anthropicKey)
   if (!summary) {
     return NextResponse.json({ error: 'Failed to generate summary' }, { status: 502 })
   }
