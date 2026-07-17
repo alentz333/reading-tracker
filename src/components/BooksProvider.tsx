@@ -3,8 +3,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Book, ReadingStats } from '@/types/book'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { fetchBooks, addBookToSupabase, updateBookInSupabase, deleteBookFromSupabase } from '@/lib/supabase/books'
-import { getBooks, addBook as addBookLocal, updateBook as updateBookLocal, deleteBook as deleteBookLocal, calculateStats } from '@/lib/storage'
+import { fetchBooks, addBookToSupabase, updateBookInSupabase, deleteBookFromSupabase, updateBookPrioritiesInSupabase } from '@/lib/supabase/books'
+import { getBooks, addBook as addBookLocal, updateBook as updateBookLocal, deleteBook as deleteBookLocal, reorderBooks as reorderBooksLocal, calculateStats } from '@/lib/storage'
 
 interface BooksContextValue {
   books: Book[]
@@ -14,6 +14,7 @@ interface BooksContextValue {
   addBook: (book: Book) => Promise<boolean>
   updateBook: (id: string, updates: Partial<Book>) => Promise<boolean>
   deleteBook: (id: string) => Promise<boolean>
+  reorderBooks: (orderedIds: string[]) => Promise<boolean>
   refresh: () => Promise<void>
   isAuthenticated: boolean
 }
@@ -114,6 +115,24 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
+  // Assign priority 1..n to the given ids (their new display order).
+  // Optimistic: state updates immediately, then persists in the background.
+  const reorderBooks = useCallback(async (orderedIds: string[]) => {
+    const priorityById = new Map(orderedIds.map((id, index) => [id, index + 1]))
+    setBooks(prev => prev.map(b =>
+      priorityById.has(b.id) ? { ...b, priority: priorityById.get(b.id) } : b
+    ))
+
+    if (user) {
+      const success = await updateBookPrioritiesInSupabase(orderedIds)
+      if (!success) setError('Failed to save book order')
+      return success
+    } else {
+      reorderBooksLocal(orderedIds)
+      return true
+    }
+  }, [user])
+
   const stats = useMemo(() => calculateStats(books), [books])
 
   const value = useMemo<BooksContextValue>(() => ({
@@ -124,9 +143,10 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
     addBook,
     updateBook,
     deleteBook,
+    reorderBooks,
     refresh: loadBooks,
     isAuthenticated: !!user,
-  }), [books, authLoading, loading, error, stats, addBook, updateBook, deleteBook, loadBooks, user])
+  }), [books, authLoading, loading, error, stats, addBook, updateBook, deleteBook, reorderBooks, loadBooks, user])
 
   return <BooksContext.Provider value={value}>{children}</BooksContext.Provider>
 }

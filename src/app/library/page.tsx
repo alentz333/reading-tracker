@@ -6,17 +6,29 @@ import Link from 'next/link';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
 import BookCard from '@/components/BookCard';
+import SortableBookGrid from '@/components/SortableBookGrid';
 import { isPreviousReadBook } from '@/lib/previous-reads';
 
 type FilterType = 'all' | 'reading' | 'read' | 'want';
+type SortType = 'recent' | 'title' | 'author' | 'rating' | 'priority';
 
 function LibraryContent() {
   const searchParams = useSearchParams();
   const initialFilter = (searchParams.get('filter') as FilterType) || 'all';
   const [filter, setFilter] = useState<FilterType>(initialFilter);
-  const [sortBy, setSortBy] = useState<'recent' | 'title' | 'author' | 'rating'>('recent');
+  const [sortBy, setSortBy] = useState<SortType>(initialFilter === 'want' ? 'priority' : 'recent');
 
-  const { books, loading, stats, updateBook, deleteBook } = useBooks();
+  const { books, loading, stats, updateBook, deleteBook, reorderBooks } = useBooks();
+
+  const selectFilter = (key: FilterType) => {
+    setFilter(key);
+    // Priority ordering only exists on the Want to Read list
+    if (key === 'want') {
+      setSortBy('priority');
+    } else if (sortBy === 'priority') {
+      setSortBy('recent');
+    }
+  };
 
   const filteredBooks = useMemo(() => {
     let filtered = books.filter(book => !isPreviousReadBook(book));
@@ -36,6 +48,15 @@ function LibraryContent() {
 
     // Apply sort
     switch (sortBy) {
+      case 'priority':
+        // Prioritized books first (1 = top), then unprioritized newest-first
+        filtered.sort((a, b) => {
+          const pa = a.priority ?? Infinity;
+          const pb = b.priority ?? Infinity;
+          if (pa !== pb) return pa - pb;
+          return (b.addedAt || '').localeCompare(a.addedAt || '');
+        });
+        break;
       case 'title':
         filtered.sort((a, b) => a.title.localeCompare(b.title));
         break;
@@ -56,6 +77,8 @@ function LibraryContent() {
 
     return filtered;
   }, [books, filter, sortBy]);
+
+  const isPriorityMode = filter === 'want' && sortBy === 'priority';
 
   const filterLabels: Record<FilterType, string> = {
     all: '📚 All Books',
@@ -107,7 +130,7 @@ function LibraryContent() {
               <button
                 key={key}
                 className={`tab ${filter === key ? 'active' : ''}`}
-                onClick={() => setFilter(key)}
+                onClick={() => selectFilter(key)}
               >
                 {filterLabels[key]}
               </button>
@@ -116,9 +139,10 @@ function LibraryContent() {
 
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            onChange={(e) => setSortBy(e.target.value as SortType)}
             className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
           >
+            {filter === 'want' && <option value="priority">My Priority</option>}
             <option value="recent">Recently Added</option>
             <option value="title">Title A-Z</option>
             <option value="author">Author A-Z</option>
@@ -129,20 +153,32 @@ function LibraryContent() {
         {/* Book Count */}
         <p className="text-white/50 text-sm mb-4">
           {filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'}
+          {isPriorityMode && filteredBooks.length > 1 && (
+            <span className="ml-2 text-indigo-400">· drag books to reorder your priority</span>
+          )}
         </p>
 
         {/* Books Grid */}
         {filteredBooks.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredBooks.map(book => (
-              <BookCard
-                key={book.id}
-                book={book}
-                onUpdate={updateBook}
-                onDelete={deleteBook}
-              />
-            ))}
-          </div>
+          isPriorityMode ? (
+            <SortableBookGrid
+              books={filteredBooks}
+              onReorder={reorderBooks}
+              onUpdate={updateBook}
+              onDelete={deleteBook}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {filteredBooks.map(book => (
+                <BookCard
+                  key={book.id}
+                  book={book}
+                  onUpdate={updateBook}
+                  onDelete={deleteBook}
+                />
+              ))}
+            </div>
+          )
         ) : (
           <div className="empty-state py-12">
             <div className="empty-state-icon">📚</div>

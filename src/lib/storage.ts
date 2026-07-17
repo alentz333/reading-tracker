@@ -30,6 +30,15 @@ export function updateBook(id: string, updates: Partial<Book>): Book[] {
   return books;
 }
 
+export function reorderBooks(orderedIds: string[]): Book[] {
+  const priorityById = new Map(orderedIds.map((id, index) => [id, index + 1]));
+  const books = getBooks().map(b =>
+    priorityById.has(b.id) ? { ...b, priority: priorityById.get(b.id) } : b
+  );
+  saveBooks(books);
+  return books;
+}
+
 export function deleteBook(id: string): Book[] {
   const books = getBooks().filter(b => b.id !== id);
   saveBooks(books);

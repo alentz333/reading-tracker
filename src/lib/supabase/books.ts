@@ -25,6 +25,7 @@ interface SupabaseBook {
   is_favorite: boolean
   is_public: boolean
   email_summary_on_finish: boolean
+  priority: number | null
   created_at: string
   books: {
     id: string
@@ -136,6 +137,7 @@ function mapSupabaseToBook(sb: SupabaseBook): Book {
     pageCount: sb.books.page_count || undefined,
     publishedYear: sb.books.published_date ? parseInt(sb.books.published_date) : undefined,
     status,
+    priority: sb.priority ?? undefined,
     rating: sb.rating || undefined,
     progress: sb.current_page || undefined, // current_page stores progress percentage (0-100)
     dateStarted: sb.started_at || undefined,
@@ -163,6 +165,7 @@ const BOOK_SELECT = `
   is_favorite,
   is_public,
   email_summary_on_finish,
+  priority,
   created_at,
   books (
     id,
@@ -295,6 +298,7 @@ export async function updateBookInSupabase(id: string, updates: Partial<Book>): 
   const dbUpdates: Record<string, unknown> = {}
 
   if ('status' in updates && updates.status) dbUpdates.status = mapStatusToDb(updates.status)
+  if ('priority' in updates) dbUpdates.priority = updates.priority ?? null
   if ('rating' in updates) dbUpdates.rating = updates.rating ?? null
   if ('review' in updates) dbUpdates.review = updates.review ?? null
   if ('progress' in updates) dbUpdates.current_page = updates.progress ?? null // using current_page for progress %
@@ -311,6 +315,30 @@ export async function updateBookInSupabase(id: string, updates: Partial<Book>): 
 
   if (error) {
     console.error('Error updating book:', error)
+    return false
+  }
+
+  return true
+}
+
+// Persist a manual ordering: ids in display order become priority 1..n.
+export async function updateBookPrioritiesInSupabase(orderedIds: string[]): Promise<boolean> {
+  const user = await getSessionUser()
+  if (!user) return false
+
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from('user_books')
+        .update({ priority: index + 1 })
+        .eq('id', id)
+        .eq('user_id', user.id)
+    )
+  )
+
+  const failed = results.find(r => r.error)
+  if (failed) {
+    console.error('Error updating book priorities:', failed.error)
     return false
   }
 

@@ -13,6 +13,7 @@ export interface Book {
   publishedDate?: string;
   description?: string;
   status: ReadingStatus;
+  priority?: number; // Manual sort order for want-to-read (1 = top)
   rating?: number; // 1-5 stars
   progress?: number; // 0-100 percentage for reading
   dateStarted?: string;

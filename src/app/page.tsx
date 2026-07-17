@@ -57,7 +57,16 @@ export default function Home() {
       return dateB.localeCompare(dateA);
     })
     .slice(0, 12);
-  const wantToRead = activeLibraryBooks.filter(b => b.status === 'want-to-read').slice(0, 8);
+  const wantToRead = activeLibraryBooks
+    .filter(b => b.status === 'want-to-read')
+    .sort((a, b) => {
+      // Same order as the library's "My Priority" sort
+      const pa = a.priority ?? Infinity;
+      const pb = b.priority ?? Infinity;
+      if (pa !== pb) return pa - pb;
+      return (b.addedAt || '').localeCompare(a.addedAt || '');
+    })
+    .slice(0, 8);
 
   useEffect(() => {
     setDiscoveryFeedback(loadDiscoveryFeedback());
