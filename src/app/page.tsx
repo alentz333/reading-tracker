@@ -703,34 +703,10 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Link
-              href="/library"
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg border border-white/10 text-center transition-colors"
-            >
-              📖 Full Library
-            </Link>
-            <Link
-              href="/library/previous-reads"
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg border border-white/10 text-center transition-colors"
-            >
-              🗓️ Previous Reads
-            </Link>
-            <button
-              onClick={openSuggestionModal}
-              className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-200 rounded-lg border border-indigo-400/30 text-center transition-colors"
-            >
-              ✨ Suggest Next Read
-            </button>
-            <button
-              onClick={openDiscoveryModal}
-              className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 rounded-lg border border-purple-400/30 text-center transition-colors"
-            >
-              🌟 Discover New Book
-            </button>
+          <div className="mt-3">
             <button
               onClick={() => setShowSearch(!showSearch)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium text-center transition-colors"
+              className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium text-center transition-colors"
             >
               + Add Book
             </button>
@@ -959,6 +935,22 @@ export default function Home() {
             </div>
           </section>
         )}
+
+        {/* Discovery Actions */}
+        <div className="mb-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            onClick={openSuggestionModal}
+            className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-200 rounded-lg border border-indigo-400/30 text-center transition-colors"
+          >
+            ✨ Suggest Next Read
+          </button>
+          <button
+            onClick={openDiscoveryModal}
+            className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 rounded-lg border border-purple-400/30 text-center transition-colors"
+          >
+            🌟 Discover New Book
+          </button>
+        </div>
 
         {/* Empty State */}
         {activeLibraryBooks.length === 0 && (
