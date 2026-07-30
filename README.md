@@ -11,7 +11,7 @@ A personal reading tracker with social book club features. Track what you're rea
 ## Features
 
 ### 📖 Personal Library
-- Search and add books via Open Library API
+- Search and add books via Open Library, with optional Google Books and Hardcover merging (title, author, or ISBN)
 - Track reading status: Want to Read → Reading → Read
 - Rate books (1-5 stars) and add personal notes
 - Scan book covers with camera (AI-powered identification)
@@ -40,7 +40,7 @@ A personal reading tracker with social book club features. Track what you're rea
 | Styling | Tailwind CSS 4 |
 | Database | [Supabase](https://supabase.com) (Postgres) |
 | Auth | Supabase Auth (Email + OAuth) |
-| Book Data | [Open Library API](https://openlibrary.org/developers/api) |
+| Book Data | [Open Library API](https://openlibrary.org/developers/api), plus optional [Google Books](https://developers.google.com/books) and [Hardcover](https://docs.hardcover.app/) |
 | Hosting | [Vercel](https://vercel.com) |
 
 ---

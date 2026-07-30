@@ -104,11 +104,12 @@ export default function CameraScanner({ onAddBook, onClose }: CameraScannerProps
       author: result.author || identifiedBook?.author || 'Unknown',
       coverUrl: result.coverUrl,
       isbn: result.isbn,
+      olKey: result.key,
       pageCount: result.pageCount,
       publishedYear: result.publishedYear,
       status,
       addedAt: new Date().toISOString(),
-      source: 'openlibrary',
+      source: result.source || 'openlibrary',
     };
     
     if (status === 'reading') {

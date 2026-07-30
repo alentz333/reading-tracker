@@ -44,10 +44,14 @@ interface ClubBook {
 }
 
 interface BookSearchResult {
-  key: string
+  key?: string
+  googleBooksId?: string
   title: string
-  author_name?: string[]
-  cover_i?: number
+  author?: string
+  coverUrl?: string | null
+  isbn?: string
+  pageCount?: number
+  publishedYear?: number
 }
 
 export default function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -192,11 +196,9 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     setSearching(true)
 
     try {
-      const response = await fetch(
-        `https://openlibrary.org/search.json?q=${encodeURIComponent(bookSearch)}&limit=10`
-      )
+      const response = await fetch(`/api/search?q=${encodeURIComponent(bookSearch)}`)
       const data = await response.json()
-      setSearchResults(data.docs || [])
+      setSearchResults(data.books || [])
     } catch (err) {
       console.error('Search failed:', err)
     }
@@ -209,23 +211,38 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     setAddingBook(true)
 
     try {
-      // First, create or find the book in our database
+      // First, create or find the book in our database.
+      // This page shows books large, so upgrade Open Library covers to -L
+      // (a no-op on Google/Hardcover cover URLs).
       const bookData = {
         title: result.title,
-        author: result.author_name?.[0] || null,
-        cover_url: result.cover_i 
-          ? `https://covers.openlibrary.org/b/id/${result.cover_i}-L.jpg` 
-          : null,
-        ol_key: result.key
+        author: result.author || null,
+        cover_url: result.coverUrl?.replace('-M.jpg', '-L.jpg') || null,
+        ol_key: result.key || null,
+        isbn: result.isbn || null,
+        page_count: result.pageCount || null,
+        published_date: result.publishedYear?.toString(),
       }
 
-      // Check if book exists
+      // Check if book exists — by Open Library key when we have one,
+      // otherwise by ISBN (Google/Hardcover results have no OL key)
       let bookId: string
-      const { data: existingBook } = await supabase
-        .from('books')
-        .select('id')
-        .eq('ol_key', result.key)
-        .single()
+      let existingBook: { id: string } | null = null
+      if (result.key) {
+        const { data } = await supabase
+          .from('books')
+          .select('id')
+          .eq('ol_key', result.key)
+          .single()
+        existingBook = data
+      } else if (result.isbn) {
+        const { data } = await supabase
+          .from('books')
+          .select('id')
+          .eq('isbn', result.isbn)
+          .single()
+        existingBook = data
+      }
 
       if (existingBook) {
         bookId = existingBook.id
@@ -611,10 +628,10 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
 
             <div className="space-y-3">
               {searchResults.map((result) => (
-                <div key={result.key} className="flex gap-3 p-3 border border-gray-200 rounded-lg">
-                  {result.cover_i ? (
+                <div key={result.key || result.googleBooksId || result.isbn || result.title} className="flex gap-3 p-3 border border-gray-200 rounded-lg">
+                  {result.coverUrl ? (
                     <img loading="lazy" decoding="async"
-                      src={`https://covers.openlibrary.org/b/id/${result.cover_i}-M.jpg`}
+                      src={result.coverUrl}
                       alt=""
                       className="w-12 h-16 object-cover rounded"
                     />
@@ -623,8 +640,8 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                   )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-[var(--color-forest)] truncate">{result.title}</h3>
-                    {result.author_name && (
-                      <p className="text-sm text-gray-600 truncate">{result.author_name.join(', ')}</p>
+                    {result.author && (
+                      <p className="text-sm text-gray-600 truncate">{result.author}</p>
                     )}
                   </div>
                   <div className="flex flex-col gap-1">

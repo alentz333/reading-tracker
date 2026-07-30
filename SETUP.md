@@ -42,6 +42,8 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 OPENAI_API_KEY=... # optional (camera scanning + summary emails)
 RESEND_API_KEY=... # optional (finish-summary emails)
+GOOGLE_BOOKS_API_KEY=... # optional (extra book-search provider; free key from Google Cloud console with the Books API enabled — no billing)
+HARDCOVER_API_TOKEN=... # optional (extra book-search provider; free token from hardcover.app account settings → Hardcover API, renew yearly)
 ```
 
 Start dev server:
@@ -70,6 +72,8 @@ vercel env add NEXT_PUBLIC_SUPABASE_URL
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
 vercel env add OPENAI_API_KEY
 vercel env add RESEND_API_KEY
+vercel env add GOOGLE_BOOKS_API_KEY
+vercel env add HARDCOVER_API_TOKEN
 ```
 
 ---

@@ -36,9 +36,11 @@ OPENAI_API_KEY=<optional-for-camera-scanning>
 ANTHROPIC_API_KEY=<optional-for-finish-summary-emails>
 RESEND_API_KEY=<optional-for-finish-summary-emails>
 SUMMARY_EMAIL_FROM=<optional-sender-override>
+GOOGLE_BOOKS_API_KEY=<optional-for-book-search>
+HARDCOVER_API_TOKEN=<optional-for-book-search>
 ```
 
-The `OPENAI_API_KEY` is required for camera-based book cover scanning (`/api/identify`). `ANTHROPIC_API_KEY` (Claude) and `RESEND_API_KEY` are required only for the finish-summary emails (`/api/finish-summary`); `SUMMARY_EMAIL_FROM` defaults to `Shelf <onboarding@resend.dev>`.
+The `OPENAI_API_KEY` is required for camera-based book cover scanning (`/api/identify`). `ANTHROPIC_API_KEY` (Claude) and `RESEND_API_KEY` are required only for the finish-summary emails (`/api/finish-summary`); `SUMMARY_EMAIL_FROM` defaults to `Shelf <onboarding@resend.dev>`. `GOOGLE_BOOKS_API_KEY` (free, Google Cloud console with the Books API enabled — no billing required, 1,000 requests/day) and `HARDCOVER_API_TOKEN` (free, hardcover.app account settings → Hardcover API; tokens expire yearly) each enable an extra `/api/search` provider whose results are merged with Open Library's; search degrades gracefully to Open Library only when they are absent.
 
 ---
 
@@ -51,7 +53,7 @@ src/
 │   ├── layout.tsx              # Root layout with AuthProvider
 │   ├── globals.css             # Global Tailwind CSS
 │   ├── api/
-│   │   ├── search/route.ts     # GET /api/search?q= → Open Library proxy
+│   │   ├── search/route.ts     # GET /api/search?q= → Open Library + Google Books + Hardcover
 │   │   ├── identify/route.ts   # POST /api/identify → GPT-4 Vision book ID
 │   │   └── user/[username]/reading-export/route.ts  # CSV export
 │   ├── auth/
@@ -197,7 +199,7 @@ Row-Level Security (RLS) is enabled. Users can only read/write their own rows. P
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `/api/search` | GET | Proxy to Open Library search. Query param: `q`. Returns up to 10 books. |
+| `/api/search` | GET | Book search. Query param: `q` (min 2 chars; ISBN-10/13 input is detected and searched as an ISBN). Queries Open Library (field-scoped title/author Solr query, English editions preferred) plus Google Books and Hardcover when their keys are set, merges/dedupes by ISBN and title+author, and returns up to 20 books. Each result carries a `source` field. |
 | `/api/identify` | POST | Body: `{ imageBase64: string }`. Uses GPT-4 Vision to identify book from cover photo. Returns `{ title, author }`. |
 | `/api/user/[username]/reading-export` | GET | Returns the user's full reading list as a CSV file. |
 | `/api/finish-summary` | POST | Body: `{ userBookId }`. If the book's `email_summary_on_finish` flag is set, generates a ~300-word summary (Claude, `claude-haiku-4-5` + web search for books it doesn't know) and emails it to the signed-in user via Resend. Triggered fire-and-forget from `BooksProvider.updateBook` when a book transitions to read. Needs `ANTHROPIC_API_KEY` + `RESEND_API_KEY`. |
@@ -259,6 +261,8 @@ Deployment is to **Vercel** with Supabase as the backend.
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `OPENAI_API_KEY` (optional, camera scanning)
+   - `GOOGLE_BOOKS_API_KEY` (optional, extra book-search provider)
+   - `HARDCOVER_API_TOKEN` (optional, extra book-search provider)
    - `ANTHROPIC_API_KEY` (optional, finish-summary emails)
    - `RESEND_API_KEY` (optional, finish-summary emails)
 3. In Supabase Auth settings, configure:
