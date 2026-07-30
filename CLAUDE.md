@@ -6,7 +6,7 @@ This file provides guidance for AI assistants (Claude and others) working with t
 
 ## Project Overview
 
-**Reading Tracker** (also called the **"Shelf" app** — Alex uses the two names interchangeably) is a full-stack web app for tracking personal reading, discovering new books, and participating in book clubs. It includes achievements and social features (public profiles, book clubs). The former XP/quests/streaks gamification layer was removed in July 2026 (its DB tables still exist but are unused).
+**Reading Tracker** (also called the **"Shelf" app** — Alex uses the two names interchangeably) is a full-stack web app for tracking personal reading, discovering new books, and participating in book clubs. It includes profile badges and social features (public profiles, book clubs). The former XP/quests/streaks gamification layer was removed in July 2026 (its DB tables still exist but are unused); achievements were rebranded as **badges** shown on profiles in July 2026.
 
 **Live stack:** Next.js 16 (App Router) · TypeScript 5 · Tailwind CSS 4 · Supabase (PostgreSQL + Auth) · Vercel
 
@@ -71,9 +71,9 @@ src/
 │   ├── profile/
 │   │   ├── page.tsx            # User profile + stats
 │   │   └── edit/page.tsx
-│   ├── user/[username]/page.tsx  # Public profile view
+│   ├── user/[username]/page.tsx  # Public profile view (badges + public books)
 │   ├── leaderboard/page.tsx
-│   └── achievements/page.tsx
+│   └── achievements/page.tsx   # Legacy route — redirects to /profile
 ├── components/
 │   ├── Header.tsx              # Navigation bar
 │   ├── BookCard.tsx            # Book display/interaction (status, rating, review)
@@ -83,13 +83,14 @@ src/
 │   ├── UserSearch.tsx          # User discovery
 │   ├── AuthModal.tsx           # Login/signup modal
 │   ├── BooksProvider.tsx       # Shared library state (single fetch, mounted in layout)
+│   ├── BadgeShowcase.tsx       # Earned/locked badge grid on profile pages
+│   ├── SortableBookList.tsx    # Drag-and-drop Want to Read priority list
 │   ├── BookCoverPlaceholder.tsx # Title-on-gradient fallback when no cover art
 │   └── auth/
 │       ├── AuthProvider.tsx    # Supabase auth context
 │       └── UserMenu.tsx        # User dropdown with logout
 ├── hooks/
-│   ├── useBooks.ts             # Alias for the BooksProvider context
-│   └── useAchievements.ts      # Achievement definitions + unlocks
+│   └── useBooks.ts             # Alias for the BooksProvider context
 ├── lib/
 │   ├── storage.ts              # localStorage API (offline fallback)
 │   ├── previous-reads.ts       # Previous reads timeline logic
@@ -100,7 +101,8 @@ src/
 │       ├── server.ts           # Server-side Supabase client
 │       ├── middleware.ts       # Session refresh middleware
 │       ├── books.ts            # Book DB operations
-│       ├── achievements.ts     # Achievement DB operations
+│       ├── badges.ts           # Badge definitions, unlocks, requirement checks
+│       ├── achievements.ts     # Thin re-export shim → badges.ts (legacy imports)
 │       ├── guardedFetch.ts     # Prevents accidental root API calls
 │       └── types.ts            # Auto-generated DB types
 └── types/
@@ -110,7 +112,10 @@ supabase/
     ├── 001_initial_schema.sql  # Core tables
     ├── 003_gamification.sql   # Achievements tables (+ legacy XP/quests tables, now unused)
     ├── 005_genres.sql          # books.genres column
-    └── 006_email_summary.sql   # user_books.email_summary_on_finish toggle
+    ├── 006_email_summary.sql   # user_books.email_summary_on_finish toggle
+    ├── 007_want_priority.sql   # user_books.priority (Want to Read manual order)
+    ├── 009_reading_format.sql  # user_books.format ('book' | 'audiobook')
+    └── 010_badges.sql          # Public badge policy + genre/audiobook badge seeds
 middleware.ts                   # Root middleware: session refresh (skips /api/search, /api/identify)
 ```
 
@@ -122,12 +127,15 @@ Defined in `src/types/book.ts`:
 
 ```typescript
 type ReadingStatus = 'read' | 'reading' | 'want-to-read' | 'dnf';
+type BookFormat = 'book' | 'audiobook';
 
 interface Book {
   id: string;
   title: string;
   author: string;
   status: ReadingStatus;
+  format?: BookFormat;      // How it was consumed; defaults to 'book'
+  priority?: number;        // Manual Want to Read order (1 = top)
   rating?: number;          // 1–5
   progress?: number;        // 0–100 (percentage) for 'reading' status
   dateStarted?: string;
@@ -173,13 +181,13 @@ Always support both paths when modifying book-related code.
 |-------|-------------|-------|
 | `profiles` | `id` (FK to auth.users), `username`, `display_name` | One per user (legacy xp/level/streak columns unused) |
 | `books` | `id`, `title`, `author`, `isbn`, `cover_url`, `page_count` | Shared catalog, deduplicated by ISBN |
-| `user_books` | `user_id`, `book_id`, `status`, `rating`, `progress`, `review`, `date_started`, `date_finished` | Per-user reading state |
+| `user_books` | `user_id`, `book_id`, `status`, `format`, `rating`, `progress`, `review`, `date_started`, `date_finished`, `priority` | Per-user reading state; `format` is `book` \| `audiobook`, `priority` orders Want to Read |
 | `clubs` | `id`, `name`, `description`, `owner_id`, `is_private` | Book clubs |
 | `club_members` | `club_id`, `user_id`, `role` | `role`: `owner` \| `admin` \| `member` |
 | `club_books` | `club_id`, `book_id`, `status` | `status`: `upcoming` \| `current` \| `finished` |
 | `xp_events` | `user_id`, `amount`, `reason`, `book_id` | Legacy XP audit log (unused) |
-| `achievements` | `id`, `name`, `description`, `xp_reward`, `category` | Shared definitions (`xp_reward` no longer surfaced) |
-| `user_achievements` | `user_id`, `achievement_id`, `unlocked_at` | Per-user unlocks |
+| `achievements` | `id`, `name`, `description`, `icon`, `category`, `requirement` | Badge definitions (legacy table name; `xp_reward` no longer surfaced) |
+| `user_achievements` | `user_id`, `achievement_id`, `unlocked_at` | Per-user badge unlocks (publicly readable for profile display) |
 | `quests` | `id`, `title`, `type`, `goal`, `xp_reward` | Legacy (unused) |
 | `user_quests` | `user_id`, `quest_id`, `progress`, `completed_at` | Legacy (unused) |
 | `reading_goals` | `user_id`, `type`, `target`, `year` | Reading targets |
@@ -207,13 +215,14 @@ Row-Level Security (RLS) is enabled. Users can only read/write their own rows. P
 
 ---
 
-## Achievements
+## Badges
 
-Achievements are the only remaining gamification feature (XP, levels, streaks, and quests were removed). Definitions live in the `achievements` table; unlocks in `user_achievements`.
+Badges (formerly "achievements") are the only remaining gamification feature (XP, levels, streaks, and quests were removed). Definitions live in the legacy `achievements` table; unlocks in `user_achievements`. Earned badges display on profile pages (`/user/[username]`) — everyone can see them; your own profile also shows locked badges behind a toggle.
 
-- `src/lib/supabase/achievements.ts` — fetch definitions/unlocks and `checkAndUnlockAchievements()`, which computes progress (books read, reviews, ratings, clubs, page counts, fast finishes) in one parallel query batch and inserts any newly earned unlocks.
-- `src/hooks/useAchievements.ts` — page-level hook used by `/achievements`; runs the check once, then loads definitions + unlocks.
-- Achievements whose requirements depended on the retired XP event log (`early_reading`, `late_reading`) or streaks can no longer be newly earned; existing unlocks still display.
+- `src/lib/supabase/badges.ts` — fetch definitions/unlocks and `checkAndUnlockBadges()`, which computes progress (books read, reviews, ratings, clubs, page counts, fast finishes, per-genre read counts, audiobooks finished) in one parallel query batch and inserts any newly earned unlocks. The check runs when a signed-in user views their own profile.
+- `src/lib/supabase/achievements.ts` — thin re-export shim (`checkAndUnlockAchievements` → `checkAndUnlockBadges`) kept for older imports.
+- `src/components/BadgeShowcase.tsx` — presentational badge grid used by the profile page.
+- Badges whose requirements depended on the retired XP event log (`early_reading`, `late_reading`) or streaks can no longer be newly earned; never-unlocked ones were deleted in migration 010 and any remaining are skipped by the unlock check, while existing unlocks still display.
 
 ---
 
@@ -223,8 +232,8 @@ Achievements are the only remaining gamification feature (XP, levels, streaks, a
 - Pages live in `src/app/**` and handle data fetching via hooks.
 - Components in `src/components/` are **presentational** — they accept data and callback props. Avoid fetching data directly inside components.
 - Component filenames: **PascalCase** (`BookCard.tsx`)
-- Utility/lib filenames: **camelCase** (`fetchBooks`, `checkAndUnlockAchievements`)
-- Custom hooks: prefixed with `use` (`useBooks`, `useAchievements`)
+- Utility/lib filenames: **camelCase** (`fetchBooks`, `checkAndUnlockBadges`)
+- Custom hooks: prefixed with `use` (`useBooks`)
 
 ### Styling
 - Tailwind CSS 4 utility classes only — no CSS modules, no `styled-components`.
@@ -286,9 +295,9 @@ See `DEPLOY.md` for the full step-by-step guide.
 2. Add TypeScript types to `src/lib/supabase/types.ts`.
 3. Add CRUD functions to the appropriate file in `src/lib/supabase/`.
 
-### Adding a new achievement
-1. Insert the definition into the `achievements` table with a `requirement` JSON.
-2. If it needs a new progress signal, extend `checkAndUnlockAchievements()` in `src/lib/supabase/achievements.ts`.
+### Adding a new badge
+1. Insert the definition into the `achievements` table with a `requirement` JSON (e.g. `{"genre": "Fantasy", "genre_count": 5}` or `{"audiobooks": 10}`).
+2. If it needs a new progress signal, extend `checkAndUnlockBadges()` in `src/lib/supabase/badges.ts`.
 
 ### Modifying book status
 - Always go through `useBooks` hook methods (`addBook`, `updateBook`, `deleteBook`).
@@ -305,5 +314,5 @@ See `DEPLOY.md` for the full step-by-step guide.
 | `src/app/layout.tsx` | Root layout wraps everything in `<AuthProvider>` + `<BooksProvider>` — auth and library state are site-wide |
 | `src/components/BooksProvider.tsx` | Central book state manager — all book mutations go through here (via the `useBooks` alias) |
 | `src/lib/supabase/books.ts` | All direct Supabase book/user_books queries live here |
-| `src/lib/supabase/achievements.ts` | Achievement definitions, unlocks, and requirement checks live here |
+| `src/lib/supabase/badges.ts` | Badge definitions, unlocks, and requirement checks live here |
 | `supabase/migrations/` | Schema history — do not edit existing migration files |
