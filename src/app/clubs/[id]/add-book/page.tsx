@@ -8,11 +8,14 @@ import BookCoverPlaceholder from '@/components/BookCoverPlaceholder'
 import Link from 'next/link'
 
 interface SearchResult {
-  key: string
+  key?: string
+  googleBooksId?: string
   title: string
-  author_name?: string[]
-  cover_i?: number
-  first_publish_year?: number
+  author?: string
+  coverUrl?: string | null
+  isbn?: string
+  pageCount?: number
+  publishedYear?: number
 }
 
 export default function AddBookToClubPage() {
@@ -51,11 +54,9 @@ export default function AddBookToClubPage() {
     setResults([])
 
     try {
-      const res = await fetch(
-        `https://openlibrary.org/search.json?q=${encodeURIComponent(search)}&limit=10`
-      )
+      const res = await fetch(`/api/search?q=${encodeURIComponent(search)}`)
       const data = await res.json()
-      setResults(data.docs || [])
+      setResults(data.books || [])
     } catch (err) {
       console.error('Search failed:', err)
     } finally {
@@ -72,21 +73,33 @@ export default function AddBookToClubPage() {
       // First, create or find the book in the books table
       const bookData = {
         title: selectedBook.title,
-        author: selectedBook.author_name?.[0] || 'Unknown',
-        cover_url: selectedBook.cover_i 
-          ? `https://covers.openlibrary.org/b/id/${selectedBook.cover_i}-M.jpg`
-          : null,
-        ol_key: selectedBook.key,
-        published_date: selectedBook.first_publish_year?.toString(),
+        author: selectedBook.author || 'Unknown',
+        cover_url: selectedBook.coverUrl || null,
+        ol_key: selectedBook.key || null,
+        isbn: selectedBook.isbn || null,
+        page_count: selectedBook.pageCount || null,
+        published_date: selectedBook.publishedYear?.toString(),
       }
 
-      // Check if book exists
+      // Check if book exists — by Open Library key when we have one,
+      // otherwise by ISBN (Google/Hardcover results have no OL key)
       let bookId: string
-      const { data: existingBook } = await supabase
-        .from('books')
-        .select('id')
-        .eq('ol_key', selectedBook.key)
-        .single()
+      let existingBook: { id: string } | null = null
+      if (selectedBook.key) {
+        const { data } = await supabase
+          .from('books')
+          .select('id')
+          .eq('ol_key', selectedBook.key)
+          .single()
+        existingBook = data
+      } else if (selectedBook.isbn) {
+        const { data } = await supabase
+          .from('books')
+          .select('id')
+          .eq('isbn', selectedBook.isbn)
+          .single()
+        existingBook = data
+      }
 
       if (existingBook) {
         bookId = existingBook.id
@@ -173,13 +186,13 @@ export default function AddBookToClubPage() {
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {results.map((book) => (
                 <button
-                  key={book.key}
+                  key={book.key || book.googleBooksId || book.isbn || book.title}
                   onClick={() => setSelectedBook(book)}
                   className="w-full flex gap-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
                 >
-                  {book.cover_i ? (
+                  {book.coverUrl ? (
                     <img loading="lazy" decoding="async"
-                      src={`https://covers.openlibrary.org/b/id/${book.cover_i}-S.jpg`}
+                      src={book.coverUrl}
                       alt=""
                       className="w-12 h-16 object-cover rounded"
                     />
@@ -189,10 +202,10 @@ export default function AddBookToClubPage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-[var(--color-forest)] line-clamp-1">{book.title}</div>
                     <div className="text-sm text-gray-600">
-                      {book.author_name?.[0] || 'Unknown author'}
+                      {book.author || 'Unknown author'}
                     </div>
-                    {book.first_publish_year && (
-                      <div className="text-xs text-gray-500">{book.first_publish_year}</div>
+                    {book.publishedYear && (
+                      <div className="text-xs text-gray-500">{book.publishedYear}</div>
                     )}
                   </div>
                 </button>
@@ -204,9 +217,9 @@ export default function AddBookToClubPage() {
           <div className="card p-6 space-y-6">
             {/* Selected Book */}
             <div className="flex gap-4 pb-4 border-b border-gray-100">
-              {selectedBook.cover_i ? (
+              {selectedBook.coverUrl ? (
                 <img loading="lazy" decoding="async"
-                  src={`https://covers.openlibrary.org/b/id/${selectedBook.cover_i}-M.jpg`}
+                  src={selectedBook.coverUrl}
                   alt=""
                   className="w-20 h-28 object-cover rounded"
                 />
@@ -215,7 +228,7 @@ export default function AddBookToClubPage() {
               )}
               <div>
                 <h3 className="text-lg font-semibold text-[var(--color-forest)]">{selectedBook.title}</h3>
-                <p className="text-gray-600">{selectedBook.author_name?.[0] || 'Unknown'}</p>
+                <p className="text-gray-600">{selectedBook.author || 'Unknown'}</p>
                 <button
                   onClick={() => setSelectedBook(null)}
                   className="text-sm text-[var(--color-forest)] underline mt-2"

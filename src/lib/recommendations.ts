@@ -32,6 +32,7 @@ interface QuerySeed {
 
 interface SearchApiBook {
   key?: string;
+  googleBooksId?: string;
   title?: string;
   author?: string;
   coverUrl?: string | null;
@@ -39,6 +40,7 @@ interface SearchApiBook {
   pageCount?: number;
   publishedYear?: number;
   description?: string;
+  source?: Book['source'];
 }
 
 const TITLE_STOP_WORDS = new Set([
@@ -471,7 +473,7 @@ export async function suggestNewBookOutsideLibrary(
           publishedYear: candidate.publishedYear,
           description: candidate.description,
           addedAt: new Date().toISOString(),
-          source: 'openlibrary',
+          source: candidate.source || 'openlibrary',
           isPublic: true,
         };
 

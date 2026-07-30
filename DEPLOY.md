@@ -79,6 +79,8 @@ In Vercel Dashboard → Project Settings → Environment Variables, add:
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://jwqhdyeycfaqtrcomwms.supabase.co` | Your Supabase URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbG...` (your anon key) | From Supabase Dashboard |
 | `OPENAI_API_KEY` | (optional) | For book cover scanning |
+| `GOOGLE_BOOKS_API_KEY` | (optional) | Extra book-search provider. Free key: Google Cloud console → enable Books API (no billing) |
+| `HARDCOVER_API_TOKEN` | (optional) | Extra book-search provider. Free token: hardcover.app → account settings → Hardcover API (renew yearly) |
 
 **Important:** These are already in `.env.local` for reference. Copy the values to Vercel.
 

@@ -9,6 +9,19 @@ interface BookSearchProps {
   onResults?: (results: Book[]) => void;
 }
 
+interface SearchApiBook {
+  key?: string;
+  googleBooksId?: string;
+  title: string;
+  author?: string;
+  coverUrl?: string | null;
+  isbn?: string;
+  pageCount?: number;
+  publishedYear?: number;
+  description?: string;
+  source?: Book['source'];
+}
+
 export default function BookSearch({ onBookSelect, onResults }: BookSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Book[]>([]);
@@ -16,6 +29,7 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -25,47 +39,63 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+    };
   }, []);
 
   const searchBooks = async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
+    if (searchQuery.trim().length < 2) {
       setResults([]);
       return;
     }
 
+    // Cancel any in-flight request so a slow stale response can't
+    // overwrite results for the current query
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     try {
-      // Use local API route (Open Library) as primary, fallback to Google Books
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-      
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`, {
+        signal: controller.signal,
+      });
+
       if (!response.ok) {
         throw new Error('Search API error');
       }
-      
+
       const data = await response.json();
-      
-      const books: Book[] = (data.books || []).map((item: any) => ({
-        id: `temp-${item.key || item.isbn || Math.random().toString(36)}`,
+      if (controller.signal.aborted) return;
+
+      const books: Book[] = (data.books || []).map((item: SearchApiBook) => ({
+        id: `temp-${item.key || item.googleBooksId || item.isbn || Math.random().toString(36)}`,
         olKey: item.key,
+        googleBooksId: item.googleBooksId,
         title: item.title,
         author: item.author || 'Unknown Author',
-        coverUrl: item.coverUrl,
+        coverUrl: item.coverUrl || undefined,
         pageCount: item.pageCount,
         isbn: item.isbn,
+        publishedYear: item.publishedYear,
         publishedDate: item.publishedYear?.toString(),
         description: item.description,
         status: 'want-to-read' as const,
+        source: item.source || 'openlibrary',
         isPublic: true,
       }));
-      
+
       setResults(books);
       onResults?.(books);
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       console.error('Search error:', error);
       setResults([]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
