@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Book, ReadingStatus } from '@/types/book';
+import { Book, BookFormat, ReadingStatus } from '@/types/book';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 
 interface BookCardProps {
@@ -15,6 +15,12 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
   const [showDetails, setShowDetails] = useState(false);
   const [editing, setEditing] = useState(false);
   const [review, setReview] = useState(book.review || '');
+  const [askFormat, setAskFormat] = useState(false);
+
+  const formatConfig: Record<BookFormat, { label: string; emoji: string }> = {
+    'book': { label: 'Book', emoji: '📖' },
+    'audiobook': { label: 'Audiobook', emoji: '🎧' },
+  };
 
   const statusConfig: Record<ReadingStatus, { label: string; class: string; emoji: string }> = {
     'read': { label: 'Read', class: 'status-read', emoji: '✅' },
@@ -33,8 +39,18 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
       // Trigger confetti!
       triggerConfetti();
     }
-    
+
+    // Finishing a book is the natural moment to record how it was consumed
+    if (newStatus === 'read' && book.status !== 'read') {
+      setAskFormat(true);
+    }
+
     onUpdate(book.id, updates);
+  };
+
+  const chooseFormat = (format: BookFormat) => {
+    onUpdate(book.id, { format });
+    setAskFormat(false);
   };
 
   const handleRating = (rating: number) => {
@@ -101,6 +117,11 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
             <span className={`status-pill ${statusConfig[book.status].class}`}>
               {statusConfig[book.status].emoji} {statusConfig[book.status].label}
             </span>
+            {book.format === 'audiobook' && (
+              <span className="inline-flex items-center text-[0.625rem] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-medium">
+                🎧 Audiobook
+              </span>
+            )}
             {book.pageCount && (
               <span className="text-xs text-white/40">{book.pageCount} pages</span>
             )}
@@ -155,7 +176,25 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
           </button>
         </div>
       </div>
-      
+
+      {/* Ask how the book was finished */}
+      {askFormat && (
+        <div className="mt-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center gap-3 flex-wrap animate-fade-in">
+          <span className="text-sm text-white/80">🎉 How did you finish it?</span>
+          <div className="flex gap-2">
+            {(['book', 'audiobook'] as BookFormat[]).map((format) => (
+              <button
+                key={format}
+                onClick={() => chooseFormat(format)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-white/80 hover:bg-indigo-500 hover:text-white transition-all"
+              >
+                {formatConfig[format].emoji} {formatConfig[format].label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Expanded Details */}
       {showDetails && (
         <div className="mt-4 pt-4 border-t border-[var(--glass-border)] animate-fade-in">
@@ -176,6 +215,28 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
                   }`}
                 >
                   {statusConfig[status].emoji} {statusConfig[status].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Format */}
+          <div className="mb-4">
+            <label className="text-xs font-medium text-white/40 uppercase tracking-wider block mb-2">
+              Format
+            </label>
+            <div className="flex gap-2">
+              {(['book', 'audiobook'] as BookFormat[]).map((format) => (
+                <button
+                  key={format}
+                  onClick={() => onUpdate(book.id, { format })}
+                  className={`text-xs px-3 py-1.5 rounded-lg transition-all ${
+                    (book.format ?? 'book') === format
+                      ? 'bg-indigo-500 text-white'
+                      : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  }`}
+                >
+                  {formatConfig[format].emoji} {formatConfig[format].label}
                 </button>
               ))}
             </div>

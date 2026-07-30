@@ -16,6 +16,7 @@ interface SupabaseBook {
   id: string
   book_id: string
   status: string
+  format: string | null
   current_page: number | null
   started_at: string | null
   finished_at: string | null
@@ -138,6 +139,7 @@ function mapSupabaseToBook(sb: SupabaseBook): Book {
     pageCount: sb.books.page_count || undefined,
     publishedYear: sb.books.published_date ? parseInt(sb.books.published_date) : undefined,
     status,
+    format: sb.format === 'audiobook' ? 'audiobook' : 'book',
     priority: sb.priority ?? undefined,
     rating: sb.rating || undefined,
     progress: sb.current_page || undefined, // current_page stores progress percentage (0-100)
@@ -157,6 +159,7 @@ const BOOK_SELECT = `
   id,
   book_id,
   status,
+  format,
   current_page,
   started_at,
   finished_at,
@@ -274,6 +277,7 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
       user_id: user.id,
       book_id: bookId,
       status: mapStatusToDb(book.status),
+      format: book.format ?? 'book',
       started_at: book.dateStarted,
       finished_at: book.dateFinished,
       rating: book.rating,
@@ -299,6 +303,7 @@ export async function updateBookInSupabase(id: string, updates: Partial<Book>): 
   const dbUpdates: Record<string, unknown> = {}
 
   if ('status' in updates && updates.status) dbUpdates.status = mapStatusToDb(updates.status)
+  if ('format' in updates) dbUpdates.format = updates.format ?? 'book'
   if ('priority' in updates) dbUpdates.priority = updates.priority ?? null
   if ('rating' in updates) dbUpdates.rating = updates.rating ?? null
   if ('review' in updates) dbUpdates.review = updates.review ?? null

@@ -1,5 +1,7 @@
 export type ReadingStatus = 'read' | 'reading' | 'want-to-read' | 'dnf';
 
+export type BookFormat = 'book' | 'audiobook';
+
 export interface Book {
   id: string;
   title: string;
@@ -13,6 +15,7 @@ export interface Book {
   publishedDate?: string;
   description?: string;
   status: ReadingStatus;
+  format?: BookFormat; // How it was/is being consumed; defaults to 'book'
   priority?: number; // Manual sort order for want-to-read (1 = top)
   rating?: number; // 1-5 stars
   progress?: number; // 0-100 percentage for reading

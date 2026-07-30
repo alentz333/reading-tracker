@@ -8,6 +8,8 @@ interface BookRef {
 
 interface ExportRow {
   books: BookRef
+  status: string
+  format: string | null
   started_at: string | null
   finished_at: string | null
   rating: number | null
@@ -15,6 +17,8 @@ interface ExportRow {
 
 interface ExportRowRaw {
   books: BookRef | BookRef[] | null
+  status: string
+  format: string | null
   started_at: string | null
   finished_at: string | null
   rating: number | null
@@ -30,10 +34,12 @@ function escapeCsv(value: string | number | null | undefined): string {
 }
 
 function toCsv(rows: ExportRow[]): string {
-  const header = ['Book Title', 'Author', 'Started At', 'Finished At', 'Rating']
+  const header = ['Book Title', 'Author', 'Status', 'Format', 'Started At', 'Finished At', 'Rating']
   const body = rows.map((row) => [
     escapeCsv(row.books.title),
     escapeCsv(row.books.author || ''),
+    escapeCsv(row.status),
+    escapeCsv(row.format || 'book'),
     escapeCsv(row.started_at),
     escapeCsv(row.finished_at),
     escapeCsv(row.rating),
@@ -70,6 +76,8 @@ export async function GET(
     const { data, error } = await supabase
       .from('user_books')
       .select(`
+        status,
+        format,
         started_at,
         finished_at,
         rating,
@@ -95,6 +103,8 @@ export async function GET(
 
         return {
           books: book,
+          status: row.status,
+          format: row.format,
           started_at: row.started_at,
           finished_at: row.finished_at,
           rating: row.rating,

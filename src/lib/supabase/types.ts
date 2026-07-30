@@ -91,6 +91,7 @@ export interface Database {
           user_id: string
           book_id: string
           status: 'want_to_read' | 'reading' | 'read' | 'dnf'
+          format: 'book' | 'audiobook'
           current_page: number | null
           started_at: string | null
           finished_at: string | null
@@ -108,6 +109,7 @@ export interface Database {
           user_id: string
           book_id: string
           status: 'want_to_read' | 'reading' | 'read' | 'dnf'
+          format?: 'book' | 'audiobook'
           current_page?: number | null
           started_at?: string | null
           finished_at?: string | null
@@ -125,6 +127,7 @@ export interface Database {
           user_id?: string
           book_id?: string
           status?: 'want_to_read' | 'reading' | 'read' | 'dnf'
+          format?: 'book' | 'audiobook'
           current_page?: number | null
           started_at?: string | null
           finished_at?: string | null
