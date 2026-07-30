@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Book, ReadingStatus } from '@/types/book';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 import { generateId } from '@/lib/storage';
@@ -10,11 +10,22 @@ interface CameraScannerProps {
   onClose: () => void;
 }
 
+interface SearchResult {
+  title?: string;
+  author?: string;
+  coverUrl?: string;
+  isbn?: string;
+  key?: string;
+  pageCount?: number;
+  publishedYear?: number;
+  source?: Book['source'];
+}
+
 export default function CameraScanner({ onAddBook, onClose }: CameraScannerProps) {
   const [mode, setMode] = useState<'camera' | 'preview' | 'identifying' | 'result'>('camera');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [identifiedBook, setIdentifiedBook] = useState<{ title: string; author: string } | null>(null);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -97,7 +108,7 @@ export default function CameraScanner({ onAddBook, onClose }: CameraScannerProps
     }
   };
 
-  const addBook = (result: any, status: ReadingStatus) => {
+  const addBook = (result: SearchResult, status: ReadingStatus) => {
     const book: Book = {
       id: generateId(),
       title: result.title || identifiedBook?.title || 'Unknown',
@@ -131,11 +142,13 @@ export default function CameraScanner({ onAddBook, onClose }: CameraScannerProps
     startCamera();
   };
 
-  // Start camera on mount
-  useState(() => {
+  // Start camera on mount, release it on unmount. setError only fires
+  // asynchronously if getUserMedia rejects, not synchronously in the effect.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     startCamera();
     return () => stopCamera();
-  });
+  }, [startCamera, stopCamera]);
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
@@ -227,7 +240,7 @@ export default function CameraScanner({ onAddBook, onClose }: CameraScannerProps
                     {result.coverUrl ? (
                       <img loading="lazy" decoding="async" src={result.coverUrl} alt="" className="w-12 h-16 object-cover rounded" />
                     ) : (
-                      <BookCoverPlaceholder title={result.title} className="w-12 h-16 rounded" textClassName="text-[8px] line-clamp-3" />
+                      <BookCoverPlaceholder title={result.title || 'Unknown'} className="w-12 h-16 rounded" textClassName="text-[8px] line-clamp-3" />
                     )}
                     <div className="flex-1">
                       <p className="font-medium text-sm">{result.title}</p>
