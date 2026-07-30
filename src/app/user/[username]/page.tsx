@@ -5,8 +5,10 @@ import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Book } from '@/types/book'
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder'
+import BadgeShowcase from '@/components/BadgeShowcase'
 import Link from 'next/link'
 import { useAuth } from '@/components/auth/AuthProvider'
+import { Badge, UserBadge, fetchAllBadges, fetchUserBadges, checkAndUnlockBadges } from '@/lib/supabase/badges'
 
 interface Profile {
   id: string
@@ -33,6 +35,8 @@ export default function UserProfilePage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [books, setBooks] = useState<PublicBook[]>([])
+  const [badges, setBadges] = useState<Badge[]>([])
+  const [userBadges, setUserBadges] = useState<UserBadge[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const supabase = createClient()
@@ -57,6 +61,18 @@ export default function UserProfilePage() {
       }
 
       setProfile(profileData)
+
+      // Badges: unlock anything newly earned when viewing your own profile,
+      // then load definitions + this user's unlocks
+      if (user?.id === profileData.id) {
+        await checkAndUnlockBadges()
+      }
+      const [allBadges, earnedBadges] = await Promise.all([
+        fetchAllBadges(),
+        fetchUserBadges(profileData.id),
+      ])
+      setBadges(allBadges)
+      setUserBadges(earnedBadges)
 
       // Fetch public books
       const { data: booksData } = await supabase
@@ -94,7 +110,7 @@ export default function UserProfilePage() {
     }
 
     loadProfile()
-  }, [username])
+  }, [username, user?.id])
 
   if (loading) {
     return (
@@ -202,6 +218,9 @@ export default function UserProfilePage() {
           </div>
         </div>
       </header>
+
+      {/* Badges */}
+      <BadgeShowcase badges={badges} userBadges={userBadges} showLocked={isOwnProfile} />
 
       {/* Currently Reading Section */}
       {currentlyReading.length > 0 && (

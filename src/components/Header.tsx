@@ -65,11 +65,11 @@ export default function Header({ stats }: HeaderProps) {
                 Clubs
               </Link>
               {user && (
-                <Link 
-                  href="/achievements" 
+                <Link
+                  href="/profile"
                   className="text-sm text-white/60 hover:text-white transition-colors"
                 >
-                  Achievements
+                  Badges
                 </Link>
               )}
             </nav>
@@ -127,12 +127,12 @@ export default function Header({ stats }: HeaderProps) {
                           >
                             <span>🗓️</span> Previous Reads
                           </Link>
-                          <Link 
-                            href="/achievements" 
+                          <Link
+                            href="/profile"
                             onClick={() => setShowDropdown(false)}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                           >
-                            <span>🏆</span> Achievements
+                            <span>🏅</span> Badges
                           </Link>
                           <Link
                             href="/clubs"
@@ -200,14 +200,14 @@ export default function Header({ stats }: HeaderProps) {
             <span className="text-xl">👥</span>
             <span className="text-xs">Clubs</span>
           </Link>
-          <Link 
-            href="/achievements" 
+          <Link
+            href="/profile"
             className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
-              pathname === '/achievements' ? 'text-indigo-400' : 'text-white/50'
+              pathname === '/profile' || pathname?.startsWith('/user/') ? 'text-indigo-400' : 'text-white/50'
             }`}
           >
-            <span className="text-xl">🏆</span>
-            <span className="text-xs">Awards</span>
+            <span className="text-xl">🏅</span>
+            <span className="text-xs">Profile</span>
           </Link>
         </div>
       </nav>
