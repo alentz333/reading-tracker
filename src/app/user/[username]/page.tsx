@@ -29,6 +29,17 @@ interface PublicBook {
   finished_at: string | null
 }
 
+interface PublicBookRow {
+  id: string
+  status: string
+  rating: number | null
+  finished_at: string | null
+  books:
+    | { title: string; author: string | null; cover_url: string | null; genres: string[] | null }
+    | { title: string; author: string | null; cover_url: string | null; genres: string[] | null }[]
+    | null
+}
+
 export default function UserProfilePage() {
   const params = useParams()
   const username = params.username as string
@@ -94,16 +105,20 @@ export default function UserProfilePage() {
         .order('created_at', { ascending: false })
 
       if (booksData) {
-        setBooks(booksData.map((b: any) => ({
-          id: b.id,
-          title: b.books.title,
-          author: b.books.author,
-          cover_url: b.books.cover_url,
-          genres: b.books.genres || [],
-          status: b.status,
-          rating: b.rating,
-          finished_at: b.finished_at,
-        })))
+        setBooks((booksData as unknown as PublicBookRow[]).flatMap(b => {
+          const book = Array.isArray(b.books) ? b.books[0] : b.books
+          if (!book) return []
+          return [{
+            id: b.id,
+            title: book.title,
+            author: book.author || 'Unknown',
+            cover_url: book.cover_url,
+            genres: book.genres || [],
+            status: b.status,
+            rating: b.rating,
+            finished_at: b.finished_at,
+          }]
+        }))
       }
 
       setLoading(false)
@@ -126,7 +141,7 @@ export default function UserProfilePage() {
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
           <h1 className="text-2xl font-bold text-[var(--color-forest)] mb-2">User not found</h1>
-          <p className="text-gray-600 mb-4">The user @{username} doesn't exist.</p>
+          <p className="text-gray-600 mb-4">The user @{username} doesn&apos;t exist.</p>
           <Link href="/" className="text-[var(--color-forest)] hover:underline">
             ← Back to home
           </Link>

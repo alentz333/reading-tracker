@@ -135,8 +135,8 @@ export default function AddBookToClubPage() {
       }
 
       router.push(`/clubs/${clubId}`)
-    } catch (err: any) {
-      setError(err.message || 'Failed to add book')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add book')
       setSaving(false)
     }
   }

@@ -69,6 +69,9 @@ export default function Home() {
     .slice(0, 8);
 
   useEffect(() => {
+    // localStorage is only readable after hydration; a lazy useState
+    // initializer would make the server and client first render disagree.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDiscoveryFeedback(loadDiscoveryFeedback());
   }, []);
 

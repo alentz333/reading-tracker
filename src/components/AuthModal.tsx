@@ -36,8 +36,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (error) throw error
       }
       onClose()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setLoading(false)
     }
@@ -136,7 +136,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
           {mode === 'signin' ? (
             <>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <button onClick={() => setMode('signup')} className="text-[var(--color-accent)] hover:underline">
                 Sign up
               </button>

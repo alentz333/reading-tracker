@@ -35,8 +35,8 @@ export default function LeaderboardPage() {
           <div className="text-6xl mb-4">🏆</div>
           <h2 className="text-2xl font-bold text-white mb-2">Coming Soon!</h2>
           <p className="text-white/50 max-w-md mx-auto mb-6">
-            Leaderboards are being built. Soon you'll be able to compete with friends 
-            and see who's reading the most!
+            Leaderboards are being built. Soon you&apos;ll be able to compete with friends
+            and see who&apos;s reading the most!
           </p>
           
           {/* Preview of what's coming */}

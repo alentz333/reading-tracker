@@ -11,6 +11,19 @@ interface BookCardProps {
   compact?: boolean;
 }
 
+function triggerConfetti() {
+  const colors = ['#6366f1', '#f472b6', '#34d399', '#f59e0b', '#60a5fa'];
+  for (let i = 0; i < 50; i++) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti';
+    confetti.style.left = `${Math.random() * 100}vw`;
+    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    confetti.style.animationDelay = `${Math.random() * 0.5}s`;
+    document.body.appendChild(confetti);
+    setTimeout(() => confetti.remove(), 3000);
+  }
+}
+
 export default function BookCard({ book, onUpdate, onDelete, compact = false }: BookCardProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -60,19 +73,6 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
   const saveReview = () => {
     onUpdate(book.id, { review });
     setEditing(false);
-  };
-
-  const triggerConfetti = () => {
-    const colors = ['#6366f1', '#f472b6', '#34d399', '#f59e0b', '#60a5fa'];
-    for (let i = 0; i < 50; i++) {
-      const confetti = document.createElement('div');
-      confetti.className = 'confetti';
-      confetti.style.left = `${Math.random() * 100}vw`;
-      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-      confetti.style.animationDelay = `${Math.random() * 0.5}s`;
-      document.body.appendChild(confetti);
-      setTimeout(() => confetti.remove(), 3000);
-    }
   };
 
   if (compact) {

@@ -40,12 +40,12 @@ export default function GoodreadsImport({ onImport }: GoodreadsImportProps) {
       }
       values.push(current.trim());
       
-      const row: any = {};
+      const row: Record<string, string> = {};
       headers.forEach((header, index) => {
         row[header] = values[index]?.replace(/"/g, '') || '';
       });
-      
-      rows.push(row as GoodreadsCSVRow);
+
+      rows.push(row as unknown as GoodreadsCSVRow);
     }
     
     return rows;
