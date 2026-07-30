@@ -9,6 +9,7 @@ interface BookCardProps {
   onUpdate: (id: string, updates: Partial<Book>) => void;
   onDelete: (id: string) => void;
   compact?: boolean;
+  topFiveFull?: boolean; // Five picks already chosen (excluding this book)
 }
 
 function triggerConfetti() {
@@ -24,7 +25,7 @@ function triggerConfetti() {
   }
 }
 
-export default function BookCard({ book, onUpdate, onDelete, compact = false }: BookCardProps) {
+export default function BookCard({ book, onUpdate, onDelete, compact = false, topFiveFull = false }: BookCardProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [editing, setEditing] = useState(false);
   const [review, setReview] = useState(book.review || '');
@@ -120,6 +121,11 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
             {book.format === 'audiobook' && (
               <span className="inline-flex items-center text-[0.625rem] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-medium">
                 🎧 Audiobook
+              </span>
+            )}
+            {book.isTopFive && (
+              <span className="inline-flex items-center text-[0.625rem] px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-300 font-medium">
+                ⭐ Top 5
               </span>
             )}
             {book.pageCount && (
@@ -318,6 +324,33 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false }: 
             </div>
           )}
           
+          {/* Top 5 pick (finished books only) */}
+          {book.status === 'read' && (
+            <div className="flex items-center justify-between mb-4 pt-3 border-t border-[var(--glass-border)]">
+              <div>
+                <span className="text-sm font-medium text-white/80">⭐ Top 5 pick</span>
+                <p className="text-xs text-white/40">
+                  {!book.isTopFive && topFiveFull
+                    ? 'Your Top 5 is full — remove another pick first'
+                    : 'Showcased under Top 5 Recommended on your profile'}
+                </p>
+              </div>
+              <button
+                onClick={() => onUpdate(book.id, { isTopFive: !book.isTopFive })}
+                disabled={!book.isTopFive && topFiveFull}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  book.isTopFive ? 'bg-yellow-500' : 'bg-white/20'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                    book.isTopFive ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
+
           {/* Privacy Toggle */}
           <div className="flex items-center justify-between mb-4 pt-3 border-t border-[var(--glass-border)]">
             <div>

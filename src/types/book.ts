@@ -26,6 +26,7 @@ export interface Book {
   addedAt?: string;
   source?: 'manual' | 'goodreads' | 'openlibrary' | 'google' | 'hardcover';
   isPublic?: boolean; // Default true - visible on profile
+  isTopFive?: boolean; // One of up to five showcased picks on the profile
   isPreviousRead?: boolean; // Imported/added from Previous Reads timeline
   emailSummaryOnFinish?: boolean; // Email a book summary when marked as read (signed-in only)
 }

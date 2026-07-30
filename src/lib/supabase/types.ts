@@ -100,6 +100,7 @@ export interface Database {
           notes: string | null
           is_favorite: boolean
           is_public: boolean
+          is_top_five: boolean
           priority: number | null
           created_at: string
           updated_at: string
@@ -118,6 +119,7 @@ export interface Database {
           notes?: string | null
           is_favorite?: boolean
           is_public?: boolean
+          is_top_five?: boolean
           priority?: number | null
           created_at?: string
           updated_at?: string
@@ -136,6 +138,7 @@ export interface Database {
           notes?: string | null
           is_favorite?: boolean
           is_public?: boolean
+          is_top_five?: boolean
           priority?: number | null
           created_at?: string
           updated_at?: string

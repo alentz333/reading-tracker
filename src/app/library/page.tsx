@@ -20,6 +20,8 @@ function LibraryContent() {
 
   const { books, loading, stats, updateBook, deleteBook, reorderBooks } = useBooks();
 
+  const topFiveCount = useMemo(() => books.filter(b => b.isTopFive).length, [books]);
+
   const selectFilter = (key: FilterType) => {
     setFilter(key);
     // Priority ordering only exists on the Want to Read list
@@ -179,6 +181,7 @@ function LibraryContent() {
                   book={book}
                   onUpdate={updateBook}
                   onDelete={deleteBook}
+                  topFiveFull={topFiveCount - (book.isTopFive ? 1 : 0) >= 5}
                 />
               ))}
             </div>

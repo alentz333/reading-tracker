@@ -74,6 +74,15 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   const updateBook = useCallback(async (id: string, updates: Partial<Book>) => {
+    // At most five Top 5 picks, whatever UI path the update came through
+    if (updates.isTopFive === true) {
+      const otherPicks = booksRef.current.filter(b => b.isTopFive && b.id !== id).length
+      if (otherPicks >= 5) {
+        setError('Your Top 5 is full — remove another pick first')
+        return false
+      }
+    }
+
     if (user) {
       const success = await updateBookInSupabase(id, updates)
       if (success) {

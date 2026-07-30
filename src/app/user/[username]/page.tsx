@@ -27,6 +27,7 @@ interface PublicBook {
   status: string
   rating: number | null
   finished_at: string | null
+  is_top_five: boolean
 }
 
 interface PublicBookRow {
@@ -34,6 +35,7 @@ interface PublicBookRow {
   status: string
   rating: number | null
   finished_at: string | null
+  is_top_five: boolean
   books:
     | { title: string; author: string | null; cover_url: string | null; genres: string[] | null }
     | { title: string; author: string | null; cover_url: string | null; genres: string[] | null }[]
@@ -93,6 +95,7 @@ export default function UserProfilePage() {
           status,
           rating,
           finished_at,
+          is_top_five,
           books (
             title,
             author,
@@ -117,6 +120,7 @@ export default function UserProfilePage() {
             status: b.status,
             rating: b.rating,
             finished_at: b.finished_at,
+            is_top_five: b.is_top_five,
           }]
         }))
       }
@@ -153,6 +157,7 @@ export default function UserProfilePage() {
   const currentlyReading = books.filter(b => b.status === 'reading')
   const readBooks = books.filter(b => b.status === 'read')
   const wantToRead = books.filter(b => b.status === 'want_to_read')
+  const topFive = books.filter(b => b.is_top_five).slice(0, 5)
 
   const statusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -236,6 +241,38 @@ export default function UserProfilePage() {
 
       {/* Badges */}
       <BadgeShowcase badges={badges} userBadges={userBadges} showLocked={isOwnProfile} />
+
+      {/* Top 5 Recommended */}
+      {topFive.length > 0 && (
+        <section className="max-w-4xl mx-auto px-6 py-8">
+          <h2 className="text-xl font-semibold text-[var(--color-forest)] mb-4 flex items-center gap-2">
+            <span className="text-2xl">⭐</span> Top 5 Recommended
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {topFive.map(book => (
+              <div key={book.id} className="card p-4 relative">
+                <span className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-[var(--color-gold)] text-[var(--color-forest)] text-sm flex items-center justify-center shadow">
+                  ⭐
+                </span>
+                {book.cover_url ? (
+                  <img loading="lazy" decoding="async"
+                    src={book.cover_url}
+                    alt={book.title}
+                    className="w-full h-40 object-cover rounded mb-2"
+                  />
+                ) : (
+                  <BookCoverPlaceholder title={book.title} className="w-full h-40 rounded mb-2" textClassName="text-sm line-clamp-4" />
+                )}
+                <h3 className="font-medium text-sm text-[var(--color-forest)] line-clamp-2">{book.title}</h3>
+                <p className="text-xs text-gray-500">{book.author}</p>
+                {book.rating && (
+                  <p className="text-xs mt-1">{'⭐'.repeat(book.rating)}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Currently Reading Section */}
       {currentlyReading.length > 0 && (
