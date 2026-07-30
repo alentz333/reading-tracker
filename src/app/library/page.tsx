@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
 import BookCard from '@/components/BookCard';
-import SortableBookGrid from '@/components/SortableBookGrid';
+import SortableBookList from '@/components/SortableBookList';
 import { isPreviousReadBook } from '@/lib/previous-reads';
 
 type FilterType = 'all' | 'reading' | 'read' | 'want' | 'dnf';
@@ -165,7 +165,7 @@ function LibraryContent() {
         {/* Books Grid */}
         {filteredBooks.length > 0 ? (
           isPriorityMode ? (
-            <SortableBookGrid
+            <SortableBookList
               books={filteredBooks}
               onReorder={reorderBooks}
               onUpdate={updateBook}
