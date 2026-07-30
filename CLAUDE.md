@@ -115,7 +115,8 @@ supabase/
     ├── 006_email_summary.sql   # user_books.email_summary_on_finish toggle
     ├── 007_want_priority.sql   # user_books.priority (Want to Read manual order)
     ├── 009_reading_format.sql  # user_books.format ('book' | 'audiobook')
-    └── 010_badges.sql          # Public badge policy + genre/audiobook badge seeds
+    ├── 010_badges.sql          # Public badge policy + genre/audiobook badge seeds
+    └── 011_top_five.sql        # user_books.is_top_five (profile Top 5 picks)
 middleware.ts                   # Root middleware: session refresh (skips /api/search, /api/identify)
 ```
 
@@ -136,6 +137,7 @@ interface Book {
   status: ReadingStatus;
   format?: BookFormat;      // How it was consumed; defaults to 'book'
   priority?: number;        // Manual Want to Read order (1 = top)
+  isTopFive?: boolean;      // Profile "Top 5 Recommended" pick (max 5, read books only)
   rating?: number;          // 1–5
   progress?: number;        // 0–100 (percentage) for 'reading' status
   dateStarted?: string;
@@ -181,7 +183,7 @@ Always support both paths when modifying book-related code.
 |-------|-------------|-------|
 | `profiles` | `id` (FK to auth.users), `username`, `display_name` | One per user (legacy xp/level/streak columns unused) |
 | `books` | `id`, `title`, `author`, `isbn`, `cover_url`, `page_count` | Shared catalog, deduplicated by ISBN |
-| `user_books` | `user_id`, `book_id`, `status`, `format`, `rating`, `progress`, `review`, `date_started`, `date_finished`, `priority` | Per-user reading state; `format` is `book` \| `audiobook`, `priority` orders Want to Read |
+| `user_books` | `user_id`, `book_id`, `status`, `format`, `rating`, `progress`, `review`, `date_started`, `date_finished`, `priority`, `is_top_five` | Per-user reading state; `format` is `book` \| `audiobook`, `priority` orders Want to Read, `is_top_five` marks profile Top 5 picks (cap enforced in `BooksProvider.updateBook`) |
 | `clubs` | `id`, `name`, `description`, `owner_id`, `is_private` | Book clubs |
 | `club_members` | `club_id`, `user_id`, `role` | `role`: `owner` \| `admin` \| `member` |
 | `club_books` | `club_id`, `book_id`, `status` | `status`: `upcoming` \| `current` \| `finished` |

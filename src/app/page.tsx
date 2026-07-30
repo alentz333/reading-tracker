@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Book, ReadingStatus } from '@/types/book';
+import { Book, BookFormat, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
@@ -32,6 +32,8 @@ export default function Home() {
   const [editStatus, setEditStatus] = useState<ReadingStatus>('read');
   const [editRating, setEditRating] = useState<number>(0);
   const [editReview, setEditReview] = useState<string>('');
+  const [editFormat, setEditFormat] = useState<BookFormat>('book');
+  const [editTopFive, setEditTopFive] = useState(false);
   const [editEmailSummary, setEditEmailSummary] = useState(false);
   const [localProgress, setLocalProgress] = useState<Record<string, number>>({});
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
@@ -142,8 +144,14 @@ export default function Home() {
     setEditStatus(book.status);
     setEditRating(book.rating || 0);
     setEditReview(book.review || '');
+    setEditFormat(book.format ?? 'book');
+    setEditTopFive(!!book.isTopFive);
     setEditEmailSummary(!!book.emailSummaryOnFinish);
   };
+
+  // Cap enforced here for the toggle UI; BooksProvider guards it too
+  const topFiveFull =
+    books.filter(b => b.isTopFive && b.id !== editingBook?.id).length >= 5;
 
   const saveEditBook = async () => {
     if (!editingBook) return;
@@ -153,6 +161,9 @@ export default function Home() {
       status: editStatus,
       rating: editRating || undefined,
       review: editReview || undefined,
+      format: editFormat,
+      // Top 5 picks are finished books only
+      isTopFive: editStatus === 'read' ? editTopFive : false,
       emailSummaryOnFinish: editEmailSummary,
     };
 
@@ -187,6 +198,8 @@ export default function Home() {
     setEditStatus('read');
     setEditRating(0);
     setEditReview('');
+    setEditFormat('book');
+    setEditTopFive(false);
   };
 
   const openSuggestionModal = () => {
@@ -397,6 +410,33 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Format */}
+            <div className="mb-5">
+              <label className="text-sm text-white/60 block mb-2">Format</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setEditFormat('book')}
+                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                    editFormat === 'book'
+                      ? 'bg-indigo-500/25 text-indigo-300 border border-indigo-400/40'
+                      : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  📖 Book
+                </button>
+                <button
+                  onClick={() => setEditFormat('audiobook')}
+                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                    editFormat === 'audiobook'
+                      ? 'bg-purple-500/25 text-purple-300 border border-purple-400/40'
+                      : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  🎧 Audiobook
+                </button>
+              </div>
+            </div>
+
             {/* Rating */}
             <div className="mb-4">
               <label className="text-sm text-white/60 block mb-2">Your Rating</label>
@@ -433,6 +473,35 @@ export default function Home() {
                 className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500"
               />
             </div>
+
+            {/* Top 5 pick (finished books only) */}
+            {editStatus === 'read' && (
+              <div className="mb-6 flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
+                <div>
+                  <p className="text-sm text-white">⭐ Top 5 pick</p>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    {!editTopFive && topFiveFull
+                      ? 'Your Top 5 is full — remove another pick first'
+                      : 'Showcase this book under Top 5 Recommended on your profile'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEditTopFive(v => !v)}
+                  disabled={!editTopFive && topFiveFull}
+                  role="switch"
+                  aria-checked={editTopFive}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+                    editTopFive ? 'bg-yellow-500' : 'bg-white/15'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                      editTopFive ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
 
             {/* Email summary toggle (signed-in only — the email goes to the account address) */}
             {isAuthenticated && (
@@ -742,17 +811,32 @@ export default function Home() {
               {currentlyReading.map(book => (
                 <div key={book.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
                   <div className="flex gap-4">
-                    {book.coverUrl ? (
-                      <img loading="lazy" decoding="async" 
-                        src={book.coverUrl} 
-                        alt={book.title}
-                        className="w-16 h-24 object-cover rounded-lg shadow-lg"
-                      />
-                    ) : (
-                      <BookCoverPlaceholder title={book.title} className="w-16 h-24 rounded-lg flex-shrink-0" />
-                    )}
+                    <button
+                      onClick={() => openEditBook(book)}
+                      className="group relative flex-shrink-0"
+                      title="Edit book"
+                    >
+                      {book.coverUrl ? (
+                        <img loading="lazy" decoding="async"
+                          src={book.coverUrl}
+                          alt={book.title}
+                          className="w-16 h-24 object-cover rounded-lg shadow-lg group-hover:ring-2 group-hover:ring-indigo-500 transition-all"
+                        />
+                      ) : (
+                        <BookCoverPlaceholder title={book.title} className="w-16 h-24 rounded-lg group-hover:ring-2 group-hover:ring-indigo-500 transition-all" />
+                      )}
+                      <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 rounded-lg flex items-center justify-center text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-all">
+                        Edit
+                      </span>
+                    </button>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-white">{book.title}</h3>
+                      <h3
+                        onClick={() => openEditBook(book)}
+                        className="font-semibold text-white cursor-pointer hover:text-indigo-300 transition-colors"
+                      >
+                        {book.title}
+                        {book.format === 'audiobook' && <span className="ml-2 text-sm">🎧</span>}
+                      </h3>
                       <p className="text-sm text-white/50">{book.author}</p>
                       {(book.genres?.length ?? 0) > 0 && (
                         <div className="flex gap-1 mt-1.5 flex-wrap">
