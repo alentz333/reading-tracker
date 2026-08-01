@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Book, ReadingStatus } from '@/types/book';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
+import BookDetailsModal from '@/components/BookDetailsModal';
 
 interface BookSearchProps {
   onBookSelect: (book: Book, status?: ReadingStatus) => void;
@@ -27,6 +28,7 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
   const [results, setResults] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [detailBook, setDetailBook] = useState<Book | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -118,6 +120,14 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
     setQuery('');
     setResults([]);
     setShowResults(false);
+    setDetailBook(null);
+  };
+
+  const openDetails = (book: Book) => {
+    setDetailBook(book);
+    // Hide the dropdown while the modal is open; results stay cached so
+    // refocusing the input brings them back if the modal is dismissed
+    setShowResults(false);
   };
 
   return (
@@ -148,7 +158,16 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
             {results.map((book) => (
               <div
                 key={book.olKey || book.id}
-                className="w-full px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors border-b border-[var(--glass-border)] last:border-b-0"
+                onClick={() => openDetails(book)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openDetails(book);
+                  }
+                }}
+                className="w-full px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors border-b border-[var(--glass-border)] last:border-b-0 cursor-pointer"
               >
                 {/* Book Cover */}
                 {book.coverUrl ? (
@@ -174,19 +193,28 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
                   {/* Quick Add Buttons */}
                   <div className="flex gap-2 mt-2">
                     <button
-                      onClick={() => handleSelect(book, 'want-to-read')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelect(book, 'want-to-read');
+                      }}
                       className="px-2 py-1 text-xs rounded-md bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors"
                     >
                       📚 Want to Read
                     </button>
                     <button
-                      onClick={() => handleSelect(book, 'reading')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelect(book, 'reading');
+                      }}
                       className="px-2 py-1 text-xs rounded-md bg-pink-500/15 text-pink-400 hover:bg-pink-500/25 transition-colors"
                     >
                       📖 Reading
                     </button>
                     <button
-                      onClick={() => handleSelect(book, 'read')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelect(book, 'read');
+                      }}
                       className="px-2 py-1 text-xs rounded-md bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-colors"
                     >
                       ✅ Read
@@ -205,6 +233,15 @@ export default function BookSearch({ onBookSelect, onResults }: BookSearchProps)
           <p className="text-white/50 text-sm">No books found for &ldquo;{query}&rdquo;</p>
           <p className="text-white/30 text-xs mt-1">Try a different search term</p>
         </div>
+      )}
+
+      {/* Book Details Modal */}
+      {detailBook && (
+        <BookDetailsModal
+          book={detailBook}
+          onClose={() => setDetailBook(null)}
+          onSelectStatus={(book, status) => handleSelect(book, status)}
+        />
       )}
     </div>
   );
