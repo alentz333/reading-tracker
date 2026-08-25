@@ -72,6 +72,8 @@ src/
 │   │   ├── page.tsx            # User profile + stats
 │   │   └── edit/page.tsx
 │   ├── user/[username]/page.tsx  # Public profile view (badges + public books)
+│   ├── people/page.tsx          # Reader directory — browse everyone, send connection requests
+│   ├── friends/page.tsx         # Friends tab — accepted connections + incoming/outgoing requests
 │   ├── leaderboard/page.tsx
 │   └── achievements/page.tsx   # Legacy route — redirects to /profile
 ├── components/
@@ -102,6 +104,7 @@ src/
 │       ├── middleware.ts       # Session refresh middleware
 │       ├── books.ts            # Book DB operations
 │       ├── badges.ts           # Badge definitions, unlocks, requirement checks
+│       ├── connections.ts      # Reader directory + friend connection requests/accepts
 │       ├── achievements.ts     # Thin re-export shim → badges.ts (legacy imports)
 │       ├── guardedFetch.ts     # Prevents accidental root API calls
 │       └── types.ts            # Auto-generated DB types
@@ -116,7 +119,8 @@ supabase/
     ├── 007_want_priority.sql   # user_books.priority (Want to Read manual order)
     ├── 009_reading_format.sql  # user_books.format ('book' | 'audiobook')
     ├── 010_badges.sql          # Public badge policy + genre/audiobook badge seeds
-    └── 011_top_five.sql        # user_books.is_top_five (profile Top 5 picks)
+    ├── 011_top_five.sql        # user_books.is_top_five (profile Top 5 picks)
+    └── 012_connections.sql     # user_connections table (reader directory + friend requests)
 middleware.ts                   # Root middleware: session refresh (skips /api/search, /api/identify)
 ```
 
@@ -194,6 +198,7 @@ Always support both paths when modifying book-related code.
 | `user_quests` | `user_id`, `quest_id`, `progress`, `completed_at` | Legacy (unused) |
 | `reading_goals` | `user_id`, `type`, `target`, `year` | Reading targets |
 | `activities` | `user_id`, `type`, `book_id`, `data` | Social activity feed |
+| `user_connections` | `id`, `requester_id`, `addressee_id`, `status`, `created_at` | Friend connections; `status` is `pending` \| `accepted`. Row visible to either side; requester inserts, addressee accepts, either side deletes (cancel/decline/unfriend) |
 
 Row-Level Security (RLS) is enabled. Users can only read/write their own rows. Public data (clubs, profiles, leaderboards) is readable by all.
 
@@ -225,6 +230,18 @@ Badges (formerly "achievements") are the only remaining gamification feature (XP
 - `src/lib/supabase/achievements.ts` — thin re-export shim (`checkAndUnlockAchievements` → `checkAndUnlockBadges`) kept for older imports.
 - `src/components/BadgeShowcase.tsx` — presentational badge grid used by the profile page.
 - Badges whose requirements depended on the retired XP event log (`early_reading`, `late_reading`) or streaks can no longer be newly earned; never-unlocked ones were deleted in migration 010 and any remaining are skipped by the unlock check, while existing unlocks still display.
+
+---
+
+## Connections (Friends)
+
+Readers can browse everyone on the app and send friend requests; once accepted, both sides show up on each other's Friends tab. Backed by the `user_connections` table (migration 012).
+
+- `src/lib/supabase/connections.ts` — `fetchReaderDirectory()` (all profiles + the signed-in user's connection status toward each), `fetchConnections()` (this user's friends/incoming/outgoing, queried as requester and addressee and merged), `sendConnectionRequest()`, `acceptConnectionRequest()`, `removeConnection()` (covers cancel/decline/unfriend — all are just row deletes), and `fetchIncomingRequestCount()` for the nav badge.
+- `src/app/people/page.tsx` — reader directory (`/people`) with search and Connect/Accept/Decline actions per row.
+- `src/app/friends/page.tsx` — Friends tab (`/friends`) with Requests / Friends / Sent sections.
+- `src/components/Header.tsx` — the profile dropdown links to both, with a red badge count of pending incoming requests.
+- The app never lets two opposite-direction pending rows exist for the same pair (`connections.ts` checks both directions before inserting); this is enforced in application code, not a DB constraint.
 
 ---
 
