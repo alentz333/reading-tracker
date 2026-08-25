@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { fetchIncomingRequestCount } from '@/lib/supabase/connections';
 
 interface HeaderProps {
   stats?: {
@@ -17,6 +18,7 @@ interface HeaderProps {
 export default function Header({ stats }: HeaderProps) {
   const { user, signOut, loading } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [incomingRequestCount, setIncomingRequestCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
@@ -31,6 +33,15 @@ export default function Header({ stats }: HeaderProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIncomingRequestCount(0);
+      return;
+    }
+    fetchIncomingRequestCount(user.id).then(setIncomingRequestCount);
+  }, [user]);
 
   const handleSignOut = async () => {
     setShowDropdown(false);
@@ -82,13 +93,16 @@ export default function Header({ stats }: HeaderProps) {
                 <div className="flex items-center gap-2 sm:gap-4">
                   {/* Profile dropdown - Click to toggle */}
                   <div className="relative" ref={dropdownRef}>
-                    <button 
+                    <button
                       onClick={() => setShowDropdown(!showDropdown)}
-                      className="flex items-center gap-2 p-1.5 rounded-full hover:bg-white/5 active:bg-white/10 transition-colors touch-manipulation"
+                      className="relative flex items-center gap-2 p-1.5 rounded-full hover:bg-white/5 active:bg-white/10 transition-colors touch-manipulation"
                     >
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
                         {user.email?.charAt(0).toUpperCase() || '?'}
                       </div>
+                      {incomingRequestCount > 0 && (
+                        <span className="absolute top-0 right-0 w-3 h-3 rounded-full bg-red-500 border-2 border-[var(--color-bg)]" />
+                      )}
                     </button>
                     
                     {/* Dropdown */}
@@ -140,6 +154,27 @@ export default function Header({ stats }: HeaderProps) {
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                           >
                             <span>👥</span> Book Clubs
+                          </Link>
+                          <Link
+                            href="/friends"
+                            onClick={() => setShowDropdown(false)}
+                            className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <span className="flex items-center gap-3">
+                              <span>🤝</span> Friends
+                            </span>
+                            {incomingRequestCount > 0 && (
+                              <span className="min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                                {incomingRequestCount}
+                              </span>
+                            )}
+                          </Link>
+                          <Link
+                            href="/people"
+                            onClick={() => setShowDropdown(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                          >
+                            <span>🔎</span> Find Readers
                           </Link>
                         </div>
                         
