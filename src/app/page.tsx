@@ -8,6 +8,7 @@ import Header from '@/components/Header';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 import BookSearch from '@/components/BookSearch';
 import { isPreviousReadBook } from '@/lib/previous-reads';
+import { formatReadingDuration, getReadingDurationDays } from '@/lib/reading-duration';
 import { getActiveReadBooksThisYear } from '@/lib/storage';
 import {
   suggestNextRead,
@@ -152,6 +153,9 @@ export default function Home() {
   // Cap enforced here for the toggle UI; BooksProvider guards it too
   const topFiveFull =
     books.filter(b => b.isTopFive && b.id !== editingBook?.id).length >= 5;
+
+  // Null unless the book is finished and records both a start and a finish date
+  const editingBookDurationDays = editingBook ? getReadingDurationDays(editingBook) : null;
 
   const saveEditBook = async () => {
     if (!editingBook) return;
@@ -344,22 +348,26 @@ export default function Home() {
       {/* Edit Book Modal */}
       {editingBook && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a1b] rounded-2xl max-w-md w-full p-6 border border-white/10">
+          <div className="bg-[#1a1a1b] rounded-2xl max-w-md w-full p-6 border border-white/10 max-h-[90vh] overflow-y-auto">
             <div className="flex gap-4 mb-6">
               {editingBook.coverUrl ? (
-                <img loading="lazy" decoding="async" 
-                  src={editingBook.coverUrl} 
+                <img loading="lazy" decoding="async"
+                  src={editingBook.coverUrl}
                   alt={editingBook.title}
-                  className="w-20 h-28 object-cover rounded-lg shadow-lg"
+                  className="w-20 h-28 object-cover rounded-lg shadow-lg flex-shrink-0"
                 />
               ) : (
                 <BookCoverPlaceholder title={editingBook.title} className="w-20 h-28 rounded-lg flex-shrink-0" />
               )}
-              <div>
+              <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-white text-lg">{editingBook.title}</h3>
                 <p className="text-sm text-white/50">{editingBook.author}</p>
-                {editingBook.dateFinished && (
-                  <p className="text-xs text-white/30 mt-1">Finished {editingBook.dateFinished}</p>
+                {editingBookDurationDays !== null && (
+                  <p className="text-xs text-white/40 mt-1">
+                    {editingBookDurationDays === 0
+                      ? '⏱️ Finished the same day'
+                      : `⏱️ Took ${formatReadingDuration(editingBookDurationDays)} to finish`}
+                  </p>
                 )}
                 {(editingBook.genres?.length ?? 0) > 0 && (
                   <div className="flex gap-1 mt-2 flex-wrap">
