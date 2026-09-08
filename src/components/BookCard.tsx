@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Book, BookFormat, ReadingStatus } from '@/types/book';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
+import { formatReadingDuration, getReadingDurationDays } from '@/lib/reading-duration';
 
 interface BookCardProps {
   book: Book;
@@ -30,6 +31,9 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false, to
   const [editing, setEditing] = useState(false);
   const [review, setReview] = useState(book.review || '');
   const [askFormat, setAskFormat] = useState(false);
+
+  // Null unless the book is finished and records both a start and a finish date
+  const durationDays = getReadingDurationDays(book);
 
   const formatConfig: Record<BookFormat, { label: string; emoji: string }> = {
     'book': { label: 'Book', emoji: '📖' },
@@ -278,6 +282,12 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false, to
               <div>
                 <span className="text-white/40 text-xs">Finished</span>
                 <p className="text-white/80">{book.dateFinished}</p>
+              </div>
+            )}
+            {durationDays !== null && (
+              <div>
+                <span className="text-white/40 text-xs">Time to finish</span>
+                <p className="text-white/80">⏱️ {formatReadingDuration(durationDays)}</p>
               </div>
             )}
           </div>

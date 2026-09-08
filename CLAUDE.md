@@ -96,6 +96,7 @@ src/
 ├── lib/
 │   ├── storage.ts              # localStorage API (offline fallback)
 │   ├── previous-reads.ts       # Previous reads timeline logic
+│   ├── reading-duration.ts     # Time-to-finish math (per-book duration + library average)
 │   ├── recommendations.ts      # Smart book suggestions
 │   ├── discovery-feedback.ts   # User preference tracking
 │   └── supabase/
