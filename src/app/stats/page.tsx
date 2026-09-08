@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 import Link from 'next/link';
 import { getBookReadYear } from '@/lib/storage';
+import { formatReadingDuration, getAverageReadingDuration } from '@/lib/reading-duration';
 
 export default function StatsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -25,10 +26,12 @@ export default function StatsPage() {
       }
     });
 
-    // Top authors (by books read)
+    // Top authors (by books read). 'Unknown Author' is the placeholder left by
+    // imports that carried no author, so it would otherwise rank as a prolific
+    // writer and take the Favourite author slot.
     const authorCounts: Record<string, number> = {};
     readBooks.forEach(b => {
-      if (b.author) {
+      if (b.author && b.author.trim().toLowerCase() !== 'unknown author') {
         authorCounts[b.author] = (authorCounts[b.author] || 0) + 1;
       }
     });
@@ -46,6 +49,10 @@ export default function StatsPage() {
       (max, b) => (!max || (b.pageCount || 0) > (max.pageCount || 0)) ? b : max,
       null
     );
+
+    // Time to finish — only books recording both a start and a finish date qualify
+    const { averageDays: avgFinishDays, sampleSize: finishSampleSize } =
+      getAverageReadingDuration(readBooks);
 
     // Books by year — sorted descending
     const byYearSorted = Object.entries(stats.byYear)
@@ -69,10 +76,13 @@ export default function StatsPage() {
       totalPagesAllTime,
       avgPages,
       longestBook,
+      avgFinishDays,
+      finishSampleSize,
       byYearSorted,
       genreSorted,
       recentlyRead,
       ratedCount: readBooks.filter(b => b.rating).length,
+      readCount: readBooks.length,
     };
   }, [books, stats]);
 
@@ -121,7 +131,7 @@ export default function StatsPage() {
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-8">
           {[
             { label: 'Books Read', value: stats.totalBooks, icon: '📚', color: 'text-indigo-400' },
             { label: `Read in ${currentYear}`, value: stats.booksThisYear, icon: '📅', color: 'text-green-400' },
@@ -129,6 +139,7 @@ export default function StatsPage() {
             { label: 'Pages All Time', value: derivedStats.totalPagesAllTime.toLocaleString(), icon: '📖', color: 'text-purple-400' },
             { label: 'Avg Rating', value: stats.averageRating > 0 ? `${stats.averageRating} ★` : '—', icon: '⭐', color: 'text-yellow-400' },
             { label: 'Avg Page Count', value: derivedStats.avgPages > 0 ? derivedStats.avgPages.toLocaleString() : '—', icon: '📏', color: 'text-orange-400' },
+            { label: 'Avg Time to Finish', value: derivedStats.finishSampleSize > 0 ? formatReadingDuration(derivedStats.avgFinishDays) : '—', icon: '⏱️', color: 'text-pink-400' },
           ].map(card => (
             <div key={card.label} className="bento-card text-center py-4">
               <div className="text-2xl mb-1">{card.icon}</div>
@@ -286,6 +297,16 @@ export default function StatsPage() {
                 <div>
                   <p className="text-xs text-white/40 mb-1">Average book length</p>
                   <p className="text-sm text-white font-medium">{derivedStats.avgPages.toLocaleString()} pages</p>
+                </div>
+              )}
+              {derivedStats.finishSampleSize > 0 && (
+                <div>
+                  <p className="text-xs text-white/40 mb-1">Average time to finish</p>
+                  <p className="text-sm text-white font-medium">{formatReadingDuration(derivedStats.avgFinishDays)}</p>
+                  <p className="text-xs text-white/50">
+                    Based on {derivedStats.finishSampleSize} of {derivedStats.readCount} book{derivedStats.readCount !== 1 ? 's' : ''} read
+                    {derivedStats.finishSampleSize < derivedStats.readCount && ' — the rest have no start date'}
+                  </p>
                 </div>
               )}
               {derivedStats.topAuthors[0] && (
