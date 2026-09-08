@@ -26,10 +26,12 @@ export default function StatsPage() {
       }
     });
 
-    // Top authors (by books read)
+    // Top authors (by books read). 'Unknown Author' is the placeholder left by
+    // imports that carried no author, so it would otherwise rank as a prolific
+    // writer and take the Favourite author slot.
     const authorCounts: Record<string, number> = {};
     readBooks.forEach(b => {
-      if (b.author) {
+      if (b.author && b.author.trim().toLowerCase() !== 'unknown author') {
         authorCounts[b.author] = (authorCounts[b.author] || 0) + 1;
       }
     });

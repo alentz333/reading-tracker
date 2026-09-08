@@ -44,8 +44,8 @@ export default function PreviousReadsPage() {
       }));
   }, [books]);
 
-  const addPreviousRead = async (title: string, yearRead?: number) => {
-    const success = await addBook(createPreviousReadBook(title, yearRead));
+  const addPreviousRead = async (title: string, yearRead?: number, author?: string) => {
+    const success = await addBook(createPreviousReadBook(title, yearRead, author));
     return success;
   };
 
@@ -85,13 +85,13 @@ export default function PreviousReadsPage() {
       const rows = parsePreviousReadsCsv(text);
 
       if (rows.length === 0) {
-        setImportMessage('No valid rows found. Use CSV columns: title, yearRead (optional).');
+        setImportMessage('No valid rows found. Use CSV columns: title, plus optional author and yearRead.');
         return;
       }
 
       let added = 0;
       for (const row of rows) {
-        const success = await addPreviousRead(row.title, row.yearRead);
+        const success = await addPreviousRead(row.title, row.yearRead, row.author);
         if (success) added++;
       }
 
@@ -103,7 +103,7 @@ export default function PreviousReadsPage() {
       );
     } catch (error) {
       console.error('CSV import failed', error);
-      setImportMessage('Could not parse CSV. Expected columns: title, yearRead (optional).');
+      setImportMessage('Could not parse CSV. Expected columns: title, plus optional author and yearRead.');
     } finally {
       setImporting(false);
       event.target.value = '';
@@ -194,7 +194,7 @@ export default function PreviousReadsPage() {
         <section className="mb-8 p-4 md:p-5 rounded-xl border border-white/10 bg-white/5">
           <h2 className="text-lg font-semibold text-white mb-1">📚 Add Previous Reads</h2>
           <p className="text-sm text-white/60 mb-4">
-            Add older books manually or upload a CSV with columns <span className="text-white/80">title</span> and optional <span className="text-white/80">yearRead</span>.
+            Add older books manually or upload a CSV with a <span className="text-white/80">title</span> column, plus optional <span className="text-white/80">author</span> and <span className="text-white/80">yearRead</span>. A Goodreads export works as-is.
           </p>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

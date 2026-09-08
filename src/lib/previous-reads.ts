@@ -5,6 +5,7 @@ export const PREVIOUS_READ_NOTE_TAG = '[previous-read]';
 
 export interface PreviousReadRow {
   title: string;
+  author?: string;
   yearRead?: number;
 }
 
@@ -98,6 +99,17 @@ export function parsePreviousReadsCsv(text: string): PreviousReadRow[] {
     ? firstRow.findIndex(cell => cell.includes('shelf'))
     : -1;
 
+  // Goodreads exports carry an Author column. Earlier imports dropped it and
+  // left every row on the 'Unknown Author' placeholder, so take it when the
+  // file has one. Prefer plain "Author" over Goodreads' "Author l-f"
+  // ("Wells, Martha"), which is the same name in a worse shape.
+  const authorIndex = looksLikeHeader
+    ? (() => {
+      const exact = firstRow.findIndex(cell => cell === 'author');
+      return exact >= 0 ? exact : firstRow.findIndex(cell => cell.includes('author'));
+    })()
+    : -1;
+
   const startIndex = looksLikeHeader ? 1 : 0;
   const rows: PreviousReadRow[] = [];
 
@@ -110,8 +122,10 @@ export function parsePreviousReadsCsv(text: string): PreviousReadRow[] {
     if (shelf && shelf !== 'read') continue;
 
     const yearRaw = yearIndex >= 0 ? cells[yearIndex] : cells[1];
+    const author = authorIndex >= 0 ? (cells[authorIndex] || '').trim() : '';
     rows.push({
       title,
+      author: author || undefined,
       yearRead: normalizeYear(yearRaw),
     });
   }
@@ -144,11 +158,11 @@ export function getBookReadYear(book: Book): number | undefined {
   return undefined;
 }
 
-export function createPreviousReadBook(title: string, yearRead?: number): Book {
+export function createPreviousReadBook(title: string, yearRead?: number, author?: string): Book {
   return {
     id: generateId(),
     title,
-    author: 'Unknown Author',
+    author: author?.trim() || 'Unknown Author',
     status: 'read',
     dateFinished: yearRead ? `${yearRead}-01-01` : undefined,
     addedAt: new Date().toISOString(),
