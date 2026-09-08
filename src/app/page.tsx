@@ -348,19 +348,29 @@ export default function Home() {
       {/* Edit Book Modal */}
       {editingBook && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a1b] rounded-2xl max-w-md w-full p-6 border border-white/10 max-h-[90vh] overflow-y-auto">
-            <div className="flex gap-4 mb-6">
+          <div className="bg-[#1a1a1b] rounded-2xl max-w-md w-full border border-white/10 max-h-[95vh] flex flex-col relative">
+            {/* Pinned to the panel, not the scroll area, so it never scrolls away */}
+            <button
+              onClick={closeEditBook}
+              aria-label="Close"
+              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white flex items-center justify-center leading-none transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="overflow-y-auto min-h-0 p-4 sm:p-6">
+            <div className="flex gap-3 sm:gap-4 mb-2 sm:mb-4">
               {editingBook.coverUrl ? (
                 <img loading="lazy" decoding="async"
                   src={editingBook.coverUrl}
                   alt={editingBook.title}
-                  className="w-20 h-28 object-cover rounded-lg shadow-lg flex-shrink-0"
+                  className="w-14 h-20 sm:w-20 sm:h-28 object-cover rounded-lg shadow-lg flex-shrink-0"
                 />
               ) : (
-                <BookCoverPlaceholder title={editingBook.title} className="w-20 h-28 rounded-lg flex-shrink-0" />
+                <BookCoverPlaceholder title={editingBook.title} className="w-14 h-20 sm:w-20 sm:h-28 rounded-lg flex-shrink-0" />
               )}
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-white text-lg">{editingBook.title}</h3>
+                <h3 className="font-semibold text-white text-base sm:text-lg pr-8">{editingBook.title}</h3>
                 <p className="text-sm text-white/50">{editingBook.author}</p>
                 {editingBookDurationDays !== null && (
                   <p className="text-xs text-white/40 mt-1">
@@ -370,7 +380,7 @@ export default function Home() {
                   </p>
                 )}
                 {(editingBook.genres?.length ?? 0) > 0 && (
-                  <div className="flex gap-1 mt-2 flex-wrap">
+                  <div className="hidden sm:flex gap-1 mt-2 flex-wrap">
                     {editingBook.genres!.slice(0, 5).map(genre => (
                       <span key={genre} className="inline-flex items-center text-[0.625rem] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-medium tracking-wide">
                         {genre}
@@ -382,12 +392,12 @@ export default function Home() {
             </div>
 
             {/* Status */}
-            <div className="mb-5">
-              <label className="text-sm text-white/60 block mb-2">Status</label>
+            <div className="mb-3 sm:mb-5">
+              <label className="text-xs sm:text-sm text-white/60 block mb-1.5 sm:mb-2">Status</label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setEditStatus('want-to-read')}
-                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors ${
                     editStatus === 'want-to-read'
                       ? 'bg-blue-500/25 text-blue-300 border border-blue-400/40'
                       : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
@@ -397,7 +407,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => setEditStatus('reading')}
-                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors ${
                     editStatus === 'reading'
                       ? 'bg-pink-500/25 text-pink-300 border border-pink-400/40'
                       : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
@@ -407,7 +417,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => setEditStatus('read')}
-                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors ${
                     editStatus === 'read'
                       ? 'bg-green-500/25 text-green-300 border border-green-400/40'
                       : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
@@ -419,12 +429,12 @@ export default function Home() {
             </div>
 
             {/* Format */}
-            <div className="mb-5">
-              <label className="text-sm text-white/60 block mb-2">Format</label>
+            <div className="mb-3 sm:mb-5">
+              <label className="text-xs sm:text-sm text-white/60 block mb-1.5 sm:mb-2">Format</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setEditFormat('book')}
-                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors ${
                     editFormat === 'book'
                       ? 'bg-indigo-500/25 text-indigo-300 border border-indigo-400/40'
                       : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
@@ -434,7 +444,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => setEditFormat('audiobook')}
-                  className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors ${
                     editFormat === 'audiobook'
                       ? 'bg-purple-500/25 text-purple-300 border border-purple-400/40'
                       : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
@@ -446,14 +456,14 @@ export default function Home() {
             </div>
 
             {/* Rating */}
-            <div className="mb-4">
-              <label className="text-sm text-white/60 block mb-2">Your Rating</label>
+            <div className="mb-2 sm:mb-4">
+              <label className="text-xs sm:text-sm text-white/60 block mb-1 sm:mb-2">Your Rating</label>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map(star => (
                   <button
                     key={star}
                     onClick={() => setEditRating(star)}
-                    className={`text-3xl transition-transform hover:scale-110 ${
+                    className={`text-xl sm:text-3xl transition-transform hover:scale-110 ${
                       star <= editRating ? 'text-yellow-400' : 'text-white/20'
                     }`}
                   >
@@ -472,22 +482,23 @@ export default function Home() {
             </div>
             
             {/* Review */}
-            <div className="mb-6">
-              <label className="text-sm text-white/60 block mb-2">Your Review</label>
+            <div className="mb-2 sm:mb-6">
+              <label className="hidden sm:block text-xs sm:text-sm text-white/60 mb-1.5 sm:mb-2">Your Review</label>
               <textarea
                 value={editReview}
                 onChange={(e) => setEditReview(e.target.value)}
                 placeholder="What did you think of this book?"
-                className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500"
+                className="w-full h-14 sm:h-32 bg-white/5 border border-white/10 rounded-lg p-2.5 sm:p-3 text-sm sm:text-base text-white placeholder-white/30 resize-none focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             {/* Top 5 pick (finished books only) */}
             {editStatus === 'read' && (
-              <div className="mb-6 flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
-                <div>
+              <div className="mb-2.5 sm:mb-6 flex items-center justify-between gap-3 p-2 sm:p-3 bg-white/5 border border-white/10 rounded-lg">
+                <div className="min-w-0">
                   <p className="text-sm text-white">⭐ Top 5 pick</p>
-                  <p className="text-xs text-white/40 mt-0.5">
+                  {/* Hidden on mobile to save height, except when it explains the disabled toggle */}
+                  <p className={`text-xs text-white/40 mt-0.5 ${!editTopFive && topFiveFull ? '' : 'hidden sm:block'}`}>
                     {!editTopFive && topFiveFull
                       ? 'Your Top 5 is full — remove another pick first'
                       : 'Showcase this book under Top 5 Recommended on your profile'}
@@ -513,10 +524,10 @@ export default function Home() {
 
             {/* Email summary toggle (signed-in only — the email goes to the account address) */}
             {isAuthenticated && (
-              <div className="mb-6 flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
-                <div>
+              <div className="mb-3 sm:mb-6 flex items-center justify-between gap-3 p-2 sm:p-3 bg-white/5 border border-white/10 rounded-lg">
+                <div className="min-w-0">
                   <p className="text-sm text-white">📧 Email summary when finished</p>
-                  <p className="text-xs text-white/40 mt-0.5">Get a recap of this book by email when you mark it as read</p>
+                  <p className="text-xs text-white/40 mt-0.5 hidden sm:block">Get a recap of this book by email when you mark it as read</p>
                 </div>
                 <button
                   onClick={() => setEditEmailSummary(v => !v)}
@@ -535,29 +546,22 @@ export default function Home() {
               </div>
             )}
 
-            {/* Actions */}
-            <div className="space-y-3">
-              <div className="flex gap-3">
-                <button
-                  onClick={saveEditBook}
-                  className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
-                >
-                  Save Changes
-                </button>
-                <button
-                  onClick={closeEditBook}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
+            {/* Actions — dismissing is the ✕ in the corner, so no Cancel button here */}
+            <div className="space-y-2 sm:space-y-3">
+              <button
+                onClick={saveEditBook}
+                className="w-full px-4 py-1.5 sm:py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+              >
+                Save Changes
+              </button>
 
               <button
                 onClick={handleRemoveBook}
-                className="w-full px-4 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-300 rounded-lg border border-red-400/30 transition-colors"
+                className="w-full px-4 py-1.5 sm:py-2 text-sm sm:text-base bg-red-500/15 hover:bg-red-500/25 text-red-300 rounded-lg border border-red-400/30 transition-colors"
               >
                 Remove from Library
               </button>
+            </div>
             </div>
           </div>
         </div>
