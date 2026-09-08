@@ -8,6 +8,7 @@ import Header from '@/components/Header';
 import BookCard from '@/components/BookCard';
 import SortableBookList from '@/components/SortableBookList';
 import { isPreviousReadBook } from '@/lib/previous-reads';
+import { parseYear } from '@/lib/storage';
 
 type FilterType = 'all' | 'reading' | 'read' | 'want' | 'dnf';
 type SortType = 'recent' | 'title' | 'author' | 'rating' | 'priority';
@@ -17,6 +18,10 @@ function LibraryContent() {
   const initialFilter = (searchParams.get('filter') as FilterType) || 'all';
   const [filter, setFilter] = useState<FilterType>(initialFilter);
   const [sortBy, setSortBy] = useState<SortType>(initialFilter === 'want' ? 'priority' : 'recent');
+  // Narrows the Read tab to books finished this year; only that tab offers it
+  const [readThisYearOnly, setReadThisYearOnly] = useState(false);
+
+  const currentYear = new Date().getFullYear();
 
   const { books, loading, stats, updateBook, deleteBook, reorderBooks } = useBooks();
 
@@ -30,6 +35,11 @@ function LibraryContent() {
     } else if (sortBy === 'priority') {
       setSortBy('recent');
     }
+    // Leaving the Read tab drops its year narrowing rather than keeping it
+    // applied invisibly for when the user comes back
+    if (key !== 'read') {
+      setReadThisYearOnly(false);
+    }
   };
 
   const filteredBooks = useMemo(() => {
@@ -42,6 +52,14 @@ function LibraryContent() {
         break;
       case 'read':
         filtered = filtered.filter(b => b.status === 'read');
+        if (readThisYearOnly) {
+          // Deliberately the finish date alone, not getBookReadYear: that
+          // helper falls back to the date a book was added when it has no
+          // finish date, which labels imported backlog as read this year.
+          // A book with no finish date has an unknown read year, so it is
+          // left out rather than guessed into the current one.
+          filtered = filtered.filter(b => parseYear(b.dateFinished) === currentYear);
+        }
         break;
       case 'want':
         filtered = filtered.filter(b => b.status === 'want-to-read');
@@ -81,7 +99,7 @@ function LibraryContent() {
     }
 
     return filtered;
-  }, [books, filter, sortBy]);
+  }, [books, filter, sortBy, readThisYearOnly, currentYear]);
 
   const isPriorityMode = filter === 'want' && sortBy === 'priority';
 
@@ -156,6 +174,29 @@ function LibraryContent() {
           </select>
         </div>
 
+        {/* Read-tab year narrowing */}
+        {filter === 'read' && (
+          <div className="flex items-center gap-2 mb-4">
+            {([
+              { label: 'All time', value: false },
+              { label: `Read in ${currentYear}`, value: true },
+            ] as const).map(option => (
+              <button
+                key={option.label}
+                onClick={() => setReadThisYearOnly(option.value)}
+                aria-pressed={readThisYearOnly === option.value}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  readThisYearOnly === option.value
+                    ? 'bg-green-500/25 text-green-300 border border-green-400/40'
+                    : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Book Count */}
         <p className="text-white/50 text-sm mb-4">
           {filteredBooks.length} {filteredBooks.length === 1 ? 'book' : 'books'}
@@ -193,7 +234,9 @@ function LibraryContent() {
             <div className="empty-state-description">
               {filter === 'all'
                 ? 'Start by searching for books to add to your library'
-                : `No books in "${filterLabels[filter].replace(/📚|📖|✅|💫|🚫 /, '')}"`
+                : filter === 'read' && readThisYearOnly
+                  ? `No books finished in ${currentYear} yet — switch to All time to see everything you've read`
+                  : `No books in "${filterLabels[filter].replace(/📚|📖|✅|💫|🚫/, '').trim()}"`
               }
             </div>
             <Link href="/" className="btn btn-primary mt-4">
