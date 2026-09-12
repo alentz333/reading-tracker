@@ -21,6 +21,20 @@ interface BooksContextValue {
 
 const BooksContext = createContext<BooksContextValue | null>(null)
 
+// Lower number sorts higher, and an unset priority sorts last. A book entering
+// the Want to Read list takes one below the current minimum so it lands on top
+// without renumbering every other row — priorities already have gaps where
+// books left the list, so there is nothing to preserve by renumbering. Values
+// can reach zero and below, which the sort handles and which a manual drag
+// reorder renormalizes back to 1..n.
+function topOfWantToReadPriority(books: Book[]): number {
+  const priorities = books
+    .filter(b => b.status === 'want-to-read' && typeof b.priority === 'number')
+    .map(b => b.priority as number)
+
+  return priorities.length > 0 ? Math.min(...priorities) - 1 : 1
+}
+
 // Single library load shared by every page — mounted once in the root layout
 // so navigating between pages doesn't refetch the whole library.
 export function BooksProvider({ children }: { children: React.ReactNode }) {
@@ -60,15 +74,21 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   }, [authLoading, loadBooks])
 
   const addBook = useCallback(async (book: Book) => {
+    // Added straight to Want to Read: put it at the top of the priority list,
+    // unless the caller already chose a position
+    const bookToAdd = book.status === 'want-to-read' && book.priority === undefined
+      ? { ...book, priority: topOfWantToReadPriority(booksRef.current) }
+      : book
+
     if (user) {
-      const newBook = await addBookToSupabase(book)
+      const newBook = await addBookToSupabase(bookToAdd)
       if (newBook) {
         setBooks(prev => [newBook, ...prev])
         return true
       }
       return false
     } else {
-      setBooks(addBookLocal(book))
+      setBooks(addBookLocal(bookToAdd))
       return true
     }
   }, [user])
@@ -83,11 +103,23 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Read before awaiting, so "previous" is the state this update replaces
+    const previous = booksRef.current.find(b => b.id === id)
+
+    // Moving a book into Want to Read counts as adding it to that list, so it
+    // goes on top too — unless the caller set a priority itself, as a drag
+    // reorder does
+    const enteringWantToRead =
+      updates.status === 'want-to-read' && previous?.status !== 'want-to-read'
+    const effectiveUpdates: Partial<Book> =
+      enteringWantToRead && !('priority' in updates)
+        ? { ...updates, priority: topOfWantToReadPriority(booksRef.current) }
+        : updates
+
     if (user) {
-      const success = await updateBookInSupabase(id, updates)
+      const success = await updateBookInSupabase(id, effectiveUpdates)
       if (success) {
-        const previous = booksRef.current.find(b => b.id === id)
-        setBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b))
+        setBooks(prev => prev.map(b => b.id === id ? { ...b, ...effectiveUpdates } : b))
 
         // Fire-and-forget: email the reader a summary when a book transitions
         // to read and its email-summary toggle is on.
@@ -105,7 +137,7 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
       }
       return false
     } else {
-      setBooks(updateBookLocal(id, updates))
+      setBooks(updateBookLocal(id, effectiveUpdates))
       return true
     }
   }, [user])

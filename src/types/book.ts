@@ -16,7 +16,7 @@ export interface Book {
   description?: string;
   status: ReadingStatus;
   format?: BookFormat; // How it was/is being consumed; defaults to 'book'
-  priority?: number; // Manual sort order for want-to-read (1 = top)
+  priority?: number; // Want to Read order: lower sorts higher, unset sorts last
   rating?: number; // 1-5 stars
   progress?: number; // 0-100 percentage for reading
   dateStarted?: string;

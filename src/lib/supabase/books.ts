@@ -281,6 +281,7 @@ export async function addBookToSupabase(book: Book): Promise<Book | null> {
       book_id: bookId,
       status: mapStatusToDb(book.status),
       format: book.format ?? 'book',
+      priority: book.priority ?? null,
       started_at: book.dateStarted,
       finished_at: book.dateFinished,
       rating: book.rating,
