@@ -1,12 +1,18 @@
 'use client';
 
 import { useState, useMemo, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
 import BookCard from '@/components/BookCard';
-import SortableBookList from '@/components/SortableBookList';
+
+// Drag-and-drop ordering only renders on the Want to Read tab, so keep dnd-kit
+// out of the bundle for every other view of the library
+const SortableBookList = dynamic(() => import('@/components/SortableBookList'), {
+  loading: () => <div className="text-sm text-white/40 py-4">Loading list...</div>,
+});
 import { isPreviousReadBook } from '@/lib/previous-reads';
 import { parseYear } from '@/lib/storage';
 

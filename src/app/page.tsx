@@ -1,12 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Book, BookFormat, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/hooks/useBooks';
 import Header from '@/components/Header';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
-import BookSearch from '@/components/BookSearch';
+// Only rendered once the search panel is opened, and it pulls in the book
+// details modal behind it, so keep both out of the initial home-page bundle
+const BookSearch = dynamic(() => import('@/components/BookSearch'), {
+  loading: () => <div className="text-sm text-white/40 py-4">Loading search...</div>,
+});
 import { isPreviousReadBook } from '@/lib/previous-reads';
 import { formatReadingDuration, getReadingDurationDays } from '@/lib/reading-duration';
 import { getActiveReadBooksThisYear } from '@/lib/storage';
