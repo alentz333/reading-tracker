@@ -12,9 +12,10 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - api/search, api/identify, api/book-details (public proxies that never read the session)
+     * - api/mcp, .well-known (MCP endpoint authenticates by bearer token, not cookies)
      * - favicon.ico (favicon file)
      * - public files
      */
-    '/((?!_next/static|_next/image|api/search|api/identify|api/book-details|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|api/search|api/identify|api/book-details|api/mcp|\\.well-known|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
