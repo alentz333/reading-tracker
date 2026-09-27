@@ -59,6 +59,8 @@ src/
 │   ├── auth/
 │   │   ├── login/page.tsx
 │   │   ├── signup/page.tsx
+│   │   ├── forgot/page.tsx     # Request a password reset email
+│   │   ├── reset/page.tsx      # Choose a new password (reached via the reset email)
 │   │   └── callback/route.ts   # Supabase OAuth callback
 │   ├── library/
 │   │   ├── page.tsx            # User's book library
@@ -224,7 +226,7 @@ Row-Level Security (RLS) is enabled. Users can only read/write their own rows. P
 | `/api/identify` | POST | Body: `{ imageBase64: string }`. Uses GPT-4 Vision to identify book from cover photo. Returns `{ title, author }`. |
 | `/api/user/[username]/reading-export` | GET | Returns the user's full reading list as a CSV file. |
 | `/api/finish-summary` | POST | Body: `{ userBookId }`. If the book's `email_summary_on_finish` flag is set, generates a ~300-word summary (Claude, `claude-haiku-4-5` + web search for books it doesn't know) and emails it to the signed-in user via Resend. Triggered fire-and-forget from `BooksProvider.updateBook` when a book transitions to read. Needs `ANTHROPIC_API_KEY` + `RESEND_API_KEY`. |
-| `/auth/callback` | GET | Supabase OAuth callback. Exchanges `code` for session, redirects to `/`. |
+| `/auth/callback` | GET | Supabase OAuth/PKCE callback. Exchanges `code` for session, then redirects to the same-origin `next` path (default `/`). Failed password-reset exchanges go to `/auth/forgot?expired=1`. |
 
 ---
 
