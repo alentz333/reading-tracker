@@ -1,11 +1,21 @@
-# Shelf MCP server (personal, stdio)
+# Shelf MCP server
 
-Drive your own library from Claude Desktop or Claude Code: search for books, add
-them, move them between shelves, rate and review, and read your stats.
+Drive your library from Claude (web, desktop, phone) or any MCP client: search
+for books, add them, move them between shelves, rate and review, and read your
+stats.
 
-This is the **personal** server. It signs in as one real user over stdio, so it
-works with MCP clients that spawn a local process. ChatGPT connectors require a
-remote HTTPS server with OAuth and cannot use this one — see *Going remote*.
+The same tools are served two ways:
+
+- **Remote** — `https://reading-tracker-chi.vercel.app/api/mcp`, streamable HTTP
+  with OAuth. Any Shelf user can connect it; it works everywhere Claude does,
+  including the phone app. See *Remote server* below.
+- **Personal stdio** — `mcp/server.ts`, spawned locally by Claude Desktop or
+  Claude Code and signed in with credentials from the client config. Handy for
+  development against a local checkout. See *Setup*.
+
+Tool definitions live in `src/lib/mcp/tools.ts` and data access in
+`src/lib/mcp/shelf.ts`; the two entry points only differ in how they obtain a
+Supabase session.
 
 ## What it does not do
 
@@ -14,7 +24,7 @@ uses the **anon key**, never the service-role key, so every query stays subject
 to the same row-level security policies the web app relies on. A bug here cannot
 reach another user's shelf.
 
-## Setup
+## Setup (personal stdio)
 
 1. Install dependencies once, in the repo root:
 
@@ -88,19 +98,37 @@ app (`want-to-read`) and underscored in Postgres (`want_to_read`).
 - **Cannot correct catalog metadata.** The `books` table has no UPDATE policy,
   so tools can add rows and change *your* shelf, but cannot fix a wrong author
   or page count. That needs a service-role run.
-- **Credentials sit in the client config in plain text.** Acceptable for a
-  personal server on your own machine; not a model for other users.
+- **Stdio credentials sit in the client config in plain text.** Acceptable for
+  a personal server on your own machine; the remote server exists so nobody
+  else has to do this.
 
-## Going remote (for other users, and for ChatGPT)
+## Remote server
 
-The tool layer here is transport-agnostic. To serve real users:
+Supabase's OAuth 2.1 server is the authorization server; the app is only the
+resource server.
 
-1. Enable Supabase's OAuth 2.1 server (Dashboard → Authentication → OAuth
-   Server), which lets your existing accounts authorise MCP clients.
-2. Re-host these same tools behind `mcp-handler` as a Next.js route
-   (`src/app/api/mcp/route.ts`), taking the caller's access token and building a
-   Supabase client with it — RLS then scopes each request to that user.
-3. Register the HTTPS URL as a custom connector in Claude, and as an MCP app in
-   ChatGPT developer mode.
+1. An unauthenticated request to `/api/mcp` gets a `401` whose
+   `WWW-Authenticate` header points at
+   `/.well-known/oauth-protected-resource/api/mcp`, which names Supabase as the
+   authorization server.
+2. The client registers itself with Supabase (dynamic client registration) and
+   sends the user to Supabase's authorize endpoint, which redirects to the
+   app's consent screen at `/oauth/consent`.
+3. The user signs in if needed, approves, and Supabase issues an access token.
+   That token is an ordinary Supabase user JWT: `/api/mcp` verifies it with
+   `getClaims` and hands it to PostgREST, so row-level security scopes every
+   query to that user — exactly as for the stdio server.
 
-Only `mcp/shelf.ts` changes shape; `mcp/server.ts` and the rules do not.
+**Connect it in Claude:** Settings → Connectors → Add custom connector → URL
+`https://reading-tracker-chi.vercel.app/api/mcp`, then sign in on the consent
+screen. Connectors added on claude.ai also appear in the desktop and mobile
+apps. ChatGPT (developer mode → MCP app) uses the same URL.
+
+**Supabase settings it depends on** (Dashboard → Authentication → OAuth
+Server): OAuth server enabled, Authorization Path `/oauth/consent`, and
+*Allow Dynamic OAuth Apps* on.
+
+Relevant files: `src/app/api/mcp/route.ts` (endpoint),
+`src/lib/mcp/remote.ts` (token verification, discovery metadata),
+`src/app/.well-known/` (discovery documents), `src/app/oauth/consent/page.tsx`
+(consent screen).

@@ -100,6 +100,10 @@ src/
 │   ├── previous-reads.ts       # Previous reads timeline logic
 │   ├── reading-duration.ts     # Time-to-finish math (per-book duration + library average)
 │   ├── book-rules.ts           # Shared write rules (status→dates/progress, WTR priority, Top 5 cap)
+│   ├── mcp/
+│   │   ├── tools.ts            # MCP tool definitions, shared by stdio and HTTP
+│   │   ├── shelf.ts            # MCP data access bound to a session (RLS enforced)
+│   │   └── remote.ts           # OAuth token verification + discovery metadata for /api/mcp
 │   ├── recommendations.ts      # Smart book suggestions
 │   ├── discovery-feedback.ts   # User preference tracking
 │   └── supabase/
@@ -126,9 +130,8 @@ supabase/
     ├── 010_badges.sql          # Public badge policy + genre/audiobook badge seeds
     ├── 011_top_five.sql        # user_books.is_top_five (profile Top 5 picks)
     └── 012_connections.sql     # user_connections table (reader directory + friend requests)
-mcp/                            # Personal stdio MCP server (see mcp/README.md)
-├── server.ts                   # Tool definitions + serveStdio
-└── shelf.ts                    # Supabase access for Node (anon key + sign-in, RLS enforced)
+mcp/                            # Shelf MCP server docs + personal stdio entry (see mcp/README.md)
+└── server.ts                   # stdio entry: signs in with SHELF_EMAIL/SHELF_PASSWORD, serves the shared tools
 middleware.ts                   # Root middleware: session refresh (skips /api/search, /api/identify)
 ```
 
@@ -226,6 +229,7 @@ Row-Level Security (RLS) is enabled. Users can only read/write their own rows. P
 | `/api/identify` | POST | Body: `{ imageBase64: string }`. Uses GPT-4 Vision to identify book from cover photo. Returns `{ title, author }`. |
 | `/api/user/[username]/reading-export` | GET | Returns the user's full reading list as a CSV file. |
 | `/api/finish-summary` | POST | Body: `{ userBookId }`. If the book's `email_summary_on_finish` flag is set, generates a ~300-word summary (Claude, `claude-haiku-4-5` + web search for books it doesn't know) and emails it to the signed-in user via Resend. Triggered fire-and-forget from `BooksProvider.updateBook` when a book transitions to read. Needs `ANTHROPIC_API_KEY` + `RESEND_API_KEY`. |
+| `/api/mcp` | GET/POST/DELETE | Remote Shelf MCP server (streamable HTTP). Requires a Supabase OAuth access token; unauthenticated requests get a 401 pointing at `/.well-known/oauth-protected-resource/api/mcp`. Consent screen at `/oauth/consent`. See `mcp/README.md`. |
 | `/auth/callback` | GET | Supabase OAuth/PKCE callback. Exchanges `code` for session, then redirects to the same-origin `next` path (default `/`). Failed password-reset exchanges go to `/auth/forgot?expired=1`. |
 
 ---
