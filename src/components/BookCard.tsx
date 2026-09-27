@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Book, BookFormat, ReadingStatus } from '@/types/book';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
 import { formatReadingDuration, getReadingDurationDays } from '@/lib/reading-duration';
+import { statusChangeUpdates } from '@/lib/book-rules';
 
 interface BookCardProps {
   book: Book;
@@ -48,13 +49,10 @@ export default function BookCard({ book, onUpdate, onDelete, compact = false, to
   };
 
   const handleStatusChange = (newStatus: ReadingStatus) => {
-    const updates: Partial<Book> = { status: newStatus };
-    
-    if (newStatus === 'reading' && !book.dateStarted) {
-      updates.dateStarted = new Date().toISOString().split('T')[0];
-    } else if (newStatus === 'read' && !book.dateFinished) {
-      updates.dateFinished = new Date().toISOString().split('T')[0];
-      // Trigger confetti!
+    const updates = statusChangeUpdates(book, newStatus);
+
+    // Confetti is presentation, not a data rule, so it stays here
+    if (newStatus === 'read' && !book.dateFinished) {
       triggerConfetti();
     }
 

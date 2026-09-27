@@ -18,6 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Book } from '@/types/book';
 import BookCoverPlaceholder from '@/components/BookCoverPlaceholder';
+import { statusChangeUpdates } from '@/lib/book-rules';
 
 interface SortableBookListProps {
   books: Book[];
@@ -39,10 +40,7 @@ function SortableBookRow({ book, rank, onUpdate, onDelete }: SortableBookRowProp
   });
 
   const startReading = () => {
-    onUpdate(book.id, {
-      status: 'reading',
-      dateStarted: book.dateStarted || new Date().toISOString().split('T')[0],
-    });
+    onUpdate(book.id, statusChangeUpdates(book, 'reading'));
   };
 
   return (

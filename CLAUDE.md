@@ -97,13 +97,15 @@ src/
 │   ├── storage.ts              # localStorage API (offline fallback)
 │   ├── previous-reads.ts       # Previous reads timeline logic
 │   ├── reading-duration.ts     # Time-to-finish math (per-book duration + library average)
+│   ├── book-rules.ts           # Shared write rules (status→dates/progress, WTR priority, Top 5 cap)
 │   ├── recommendations.ts      # Smart book suggestions
 │   ├── discovery-feedback.ts   # User preference tracking
 │   └── supabase/
 │       ├── client.ts           # Browser Supabase client
 │       ├── server.ts           # Server-side Supabase client
 │       ├── middleware.ts       # Session refresh middleware
-│       ├── books.ts            # Book DB operations
+│       ├── books.ts            # Book DB operations (browser client)
+│       ├── book-mapping.ts     # Row shape + status/genre mapping, shared with the MCP server
 │       ├── badges.ts           # Badge definitions, unlocks, requirement checks
 │       ├── connections.ts      # Reader directory + friend connection requests/accepts
 │       ├── achievements.ts     # Thin re-export shim → badges.ts (legacy imports)
@@ -122,6 +124,9 @@ supabase/
     ├── 010_badges.sql          # Public badge policy + genre/audiobook badge seeds
     ├── 011_top_five.sql        # user_books.is_top_five (profile Top 5 picks)
     └── 012_connections.sql     # user_connections table (reader directory + friend requests)
+mcp/                            # Personal stdio MCP server (see mcp/README.md)
+├── server.ts                   # Tool definitions + serveStdio
+└── shelf.ts                    # Supabase access for Node (anon key + sign-in, RLS enforced)
 middleware.ts                   # Root middleware: session refresh (skips /api/search, /api/identify)
 ```
 

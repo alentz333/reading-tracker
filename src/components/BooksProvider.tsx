@@ -5,6 +5,7 @@ import { Book, ReadingStats } from '@/types/book'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { fetchBooks, addBookToSupabase, updateBookInSupabase, deleteBookFromSupabase, updateBookPrioritiesInSupabase } from '@/lib/supabase/books'
 import { getBooks, addBook as addBookLocal, updateBook as updateBookLocal, deleteBook as deleteBookLocal, reorderBooks as reorderBooksLocal, calculateStats } from '@/lib/storage'
+import { isEnteringWantToRead, isTopFiveFull, topOfWantToReadPriority } from '@/lib/book-rules'
 
 interface BooksContextValue {
   books: Book[]
@@ -21,19 +22,6 @@ interface BooksContextValue {
 
 const BooksContext = createContext<BooksContextValue | null>(null)
 
-// Lower number sorts higher, and an unset priority sorts last. A book entering
-// the Want to Read list takes one below the current minimum so it lands on top
-// without renumbering every other row — priorities already have gaps where
-// books left the list, so there is nothing to preserve by renumbering. Values
-// can reach zero and below, which the sort handles and which a manual drag
-// reorder renormalizes back to 1..n.
-function topOfWantToReadPriority(books: Book[]): number {
-  const priorities = books
-    .filter(b => b.status === 'want-to-read' && typeof b.priority === 'number')
-    .map(b => b.priority as number)
-
-  return priorities.length > 0 ? Math.min(...priorities) - 1 : 1
-}
 
 // Single library load shared by every page — mounted once in the root layout
 // so navigating between pages doesn't refetch the whole library.
@@ -96,8 +84,7 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   const updateBook = useCallback(async (id: string, updates: Partial<Book>) => {
     // At most five Top 5 picks, whatever UI path the update came through
     if (updates.isTopFive === true) {
-      const otherPicks = booksRef.current.filter(b => b.isTopFive && b.id !== id).length
-      if (otherPicks >= 5) {
+      if (isTopFiveFull(booksRef.current, id)) {
         setError('Your Top 5 is full — remove another pick first')
         return false
       }
@@ -109,10 +96,8 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
     // Moving a book into Want to Read counts as adding it to that list, so it
     // goes on top too — unless the caller set a priority itself, as a drag
     // reorder does
-    const enteringWantToRead =
-      updates.status === 'want-to-read' && previous?.status !== 'want-to-read'
     const effectiveUpdates: Partial<Book> =
-      enteringWantToRead && !('priority' in updates)
+      isEnteringWantToRead(previous?.status, updates.status) && !('priority' in updates)
         ? { ...updates, priority: topOfWantToReadPriority(booksRef.current) }
         : updates
 

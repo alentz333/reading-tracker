@@ -14,6 +14,7 @@ const BookSearch = dynamic(() => import('@/components/BookSearch'), {
 });
 import { isPreviousReadBook } from '@/lib/previous-reads';
 import { formatReadingDuration, getReadingDurationDays } from '@/lib/reading-duration';
+import { statusChangeUpdates } from '@/lib/book-rules';
 import { getActiveReadBooksThisYear } from '@/lib/storage';
 import {
   suggestNextRead,
@@ -84,19 +85,8 @@ export default function Home() {
   }, []);
 
   const handleAddBook = async (book: Book, status?: ReadingStatus) => {
-    const today = new Date().toISOString().split('T')[0];
     const nextStatus = status || book.status;
-    const bookToAdd = { ...book, status: nextStatus };
-
-    if (nextStatus === 'reading') {
-      bookToAdd.dateStarted = today;
-      bookToAdd.progress = bookToAdd.progress ?? 0;
-    }
-
-    if (nextStatus === 'read') {
-      bookToAdd.dateFinished = bookToAdd.dateFinished || today;
-      bookToAdd.progress = 100;
-    }
+    const bookToAdd = { ...book, ...statusChangeUpdates(book, nextStatus) };
 
     const success = await addBook(bookToAdd);
 
@@ -130,11 +120,10 @@ export default function Home() {
   };
 
   const confirmFinishBook = async (bookId: string) => {
+    const book = books.find(b => b.id === bookId);
     await updateBook(bookId, {
-      status: 'read',
-      progress: 100,
+      ...statusChangeUpdates(book ?? { status: 'reading' }, 'read'),
       rating: pendingRating || undefined,
-      dateFinished: new Date().toISOString().split('T')[0],
       emailSummaryOnFinish: pendingEmailSummary,
     });
     setFinishingBook(null);
@@ -165,9 +154,8 @@ export default function Home() {
   const saveEditBook = async () => {
     if (!editingBook) return;
 
-    const today = new Date().toISOString().split('T')[0];
     const updates: Partial<Book> = {
-      status: editStatus,
+      ...statusChangeUpdates(editingBook, editStatus),
       rating: editRating || undefined,
       review: editReview || undefined,
       format: editFormat,
@@ -175,18 +163,6 @@ export default function Home() {
       isTopFive: editStatus === 'read' ? editTopFive : false,
       emailSummaryOnFinish: editEmailSummary,
     };
-
-    if (editStatus === 'read') {
-      updates.progress = 100;
-      updates.dateFinished = editingBook.dateFinished || today;
-    } else if (editStatus === 'reading') {
-      updates.progress = 0;
-      updates.dateStarted = editingBook.dateStarted || today;
-      updates.dateFinished = undefined;
-    } else {
-      updates.progress = 0;
-      updates.dateFinished = undefined;
-    }
 
     await updateBook(editingBook.id, updates);
     closeEditBook();
@@ -225,14 +201,11 @@ export default function Home() {
     if (!nextSuggestion?.book) return;
 
     setStartingSuggestion(true);
-    const today = new Date().toISOString().split('T')[0];
 
-    const success = await updateBook(nextSuggestion.book.id, {
-      status: 'reading',
-      progress: 0,
-      dateStarted: nextSuggestion.book.dateStarted || today,
-      dateFinished: undefined,
-    });
+    const success = await updateBook(
+      nextSuggestion.book.id,
+      statusChangeUpdates(nextSuggestion.book, 'reading')
+    );
 
     if (success) {
       closeSuggestionModal();
